@@ -2,8 +2,6 @@ import "@nomicfoundation/hardhat-verify";
 import "@nomicfoundation/hardhat-ethers";
 import "@nomicfoundation/hardhat-chai-matchers";
 
-import "@solarity/chai-zkit";
-import "@solarity/hardhat-zkit";
 import "@solarity/hardhat-migrate";
 import "@solarity/hardhat-gobind";
 import "@solarity/hardhat-markup";
@@ -83,11 +81,6 @@ const config: HardhatUserConfig = {
       evmVersion: "paris",
     },
   },
-  zkit: {
-    compilationSettings: {
-      onlyFiles: [],
-    },
-  },
   etherscan: {
     apiKey: {
       sepolia: `${process.env.ETHERSCAN_KEY}`,
@@ -116,7 +109,7 @@ const config: HardhatUserConfig = {
   gasReporter: {
     currency: "USD",
     gasPrice: 50,
-    enabled: false,
+    enabled: true,
     coinmarketcap: `${process.env.COINMARKETCAP_KEY}`,
   },
   typechain: {
