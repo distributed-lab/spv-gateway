@@ -111,6 +111,7 @@ const config: HardhatUserConfig = {
     gasPrice: 50,
     enabled: true,
     coinmarketcap: `${process.env.COINMARKETCAP_KEY}`,
+    reportPureAndViewMethods: true,
   },
   typechain: {
     outDir: "generated-types/ethers",

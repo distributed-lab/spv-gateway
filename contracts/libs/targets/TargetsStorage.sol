@@ -128,17 +128,13 @@ library TargetsStorage {
     /**
      * @notice Function to count network target epoch number
      *
-     * From 0 to 2016 -> 1st epoch
-     * From 2017 to 4032 -> 2st epoch
+     * From 0 to 2015 -> 1st epoch
+     * From 2016 to 4031 -> 2st epoch
      *
      * @param blockHeight_ The network block height value
      */
     function countTargetEpoch(uint256 blockHeight_) internal pure returns (uint256 targetEpoch_) {
         targetEpoch_ = blockHeight_ / DIFFICULTY_ADJSTMENT_INTERVAL + 1;
-
-        if (isTargetAdjustmentBlock(blockHeight_)) {
-            targetEpoch_--;
-        }
     }
 
     function isTargetAdjustmentBlock(uint256 blockHeight_) internal pure returns (bool) {
@@ -174,7 +170,7 @@ library TargetsStorage {
             InvalidEpochTimeParameters(epochStartTime_, epochEndTime_)
         );
 
-        uint256 nextTargetEpoch_ = countTargetEpoch(blockHeight_) + 1;
+        uint256 nextTargetEpoch_ = countTargetEpoch(blockHeight_);
         bytes32 newTargetValue_ = getTarget(self, nextTargetEpoch_ - 1).countNewRoundedTarget(
             epochEndTime_ - epochStartTime_
         );

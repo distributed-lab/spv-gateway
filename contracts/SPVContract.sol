@@ -8,8 +8,6 @@ import {BlocksStorage} from "./libs/BlocksStorage.sol";
 import {TargetsStorage} from "./libs/targets/TargetsStorage.sol";
 import {TargetsHelper} from "./libs/targets/TargetsHelper.sol";
 
-// import "hardhat/console.sol";
-
 contract SPVContract is Initializable {
     using BlockHeader for bytes;
     using BlocksStorage for BlocksStorage.BlocksData;
@@ -58,8 +56,6 @@ contract SPVContract is Initializable {
 
         (BlockHeaderData memory blockHeader_, bytes32 blockHash_) = blockHeaderRaw_
             .parseBlockHeaderData();
-
-        // console.logBytes32(blockHash_);
 
         require(!$.blocksData.blockExists(blockHash_), BlockAlreadyExists(blockHash_));
         require(
@@ -152,12 +148,4 @@ contract SPVContract is Initializable {
 
         require(blockHeader_.time > medianTime_, InvalidBlockTime(blockHeader_.time, medianTime_));
     }
-
-    // function test(bytes calldata blockHeaderRaw_) external {
-    //     BlockHeader.BlockHeaderData memory initBlockHeaderData_ = BlockHeader.parseBlockHeaderData(
-    //         blockHeaderRaw_
-    //     );
-
-    //     console.logBytes32(initBlockHeaderData_.blockHash);
-    // }
 }

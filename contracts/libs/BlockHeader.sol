@@ -22,7 +22,7 @@ library BlockHeader {
     function getBlockHeaderHash(bytes calldata blockHeaderRaw_) internal pure returns (bytes32) {
         bytes32 rawBlockHash_ = sha256(abi.encode(sha256(blockHeaderRaw_)));
 
-        return reverseBlockHash(rawBlockHash_);
+        return reverseHash(rawBlockHash_);
     }
 
     function parseBlockHeaderData(
@@ -34,33 +34,41 @@ library BlockHeader {
         );
 
         headerData_ = BlockHeaderData({
-            version: uint32(_convertToBigEndian(blockHeaderRaw_[0:4])),
-            prevBlockHash: reverseBlockHash(bytes32(blockHeaderRaw_[4:36])),
-            merkleRoot: bytes32(blockHeaderRaw_[36:68]),
-            time: uint32(_convertToBigEndian(blockHeaderRaw_[68:72])),
-            bits: bytes4(uint32(_convertToBigEndian(blockHeaderRaw_[72:76]))),
-            nonce: uint32(_convertToBigEndian(blockHeaderRaw_[76:80]))
+            version: uint32(_reverseBytes(blockHeaderRaw_[0:4])),
+            prevBlockHash: reverseHash(bytes32(blockHeaderRaw_[4:36])),
+            merkleRoot: reverseHash(bytes32(blockHeaderRaw_[36:68])),
+            time: uint32(_reverseBytes(blockHeaderRaw_[68:72])),
+            bits: bytes4(uint32(_reverseBytes(blockHeaderRaw_[72:76]))),
+            nonce: uint32(_reverseBytes(blockHeaderRaw_[76:80]))
         });
         blockHash_ = getBlockHeaderHash(blockHeaderRaw_);
     }
 
     function toRawBytes(BlockHeaderData memory headerData_) internal pure returns (bytes memory) {
         return
-            abi.encode(
-                headerData_.version,
-                reverseBlockHash(headerData_.prevBlockHash),
-                headerData_.merkleRoot,
-                headerData_.time,
-                headerData_.bits,
-                headerData_.nonce
+            abi.encodePacked(
+                _reverseUint32(headerData_.version),
+                reverseHash(headerData_.prevBlockHash),
+                reverseHash(headerData_.merkleRoot),
+                _reverseUint32(headerData_.time),
+                _reverseUint32(uint32(headerData_.bits)),
+                _reverseUint32(headerData_.nonce)
             );
     }
 
-    function reverseBlockHash(bytes32 blockHash_) internal pure returns (bytes32) {
+    function reverseHash(bytes32 blockHash_) internal pure returns (bytes32) {
         return bytes32(uint256(blockHash_).reverseBytes());
     }
 
-    function _convertToBigEndian(bytes calldata bytesToConvert_) private pure returns (uint256) {
+    function _reverseBytes(bytes calldata bytesToConvert_) private pure returns (uint256) {
         return uint256(bytes32(bytesToConvert_)).reverseBytes();
+    }
+
+    function _reverseUint32(uint32 input_) private pure returns (uint32) {
+        return
+            ((input_ & 0x000000FF) << 24) |
+            ((input_ & 0x0000FF00) << 8) |
+            ((input_ & 0x00FF0000) >> 8) |
+            ((input_ & 0xFF000000) >> 24);
     }
 }

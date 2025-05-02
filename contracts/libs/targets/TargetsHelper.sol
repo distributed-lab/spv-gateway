@@ -40,7 +40,7 @@ library TargetsHelper {
             Math.mulDiv(uint256(currentTarget_), currentRatio, TARGET_FIXED_POINT_FACTOR)
         );
 
-        return target_ > INITIAL_TARGET ? target_ : INITIAL_TARGET;
+        return target_ > INITIAL_TARGET ? INITIAL_TARGET : target_;
     }
 
     function countBlockWork(bytes32 target_) internal pure returns (uint256 blockWork_) {

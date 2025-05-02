@@ -84,21 +84,6 @@ library BlocksStorage {
         );
     }
 
-    function _initialize(
-        BlocksData storage self,
-        BlockHeaderData memory startBlockHeader_,
-        bytes32 startBlockHash_,
-        uint256 startBlockHeight_,
-        uint256 startBlockWork_,
-        uint256 pendingBlockCount_
-    ) private {
-        require(!_isInitialized(self), BlocksStorageAlreadyInitialized());
-
-        _addBlock(self, startBlockHeader_, startBlockHash_, startBlockHeight_, startBlockWork_);
-
-        self.pendingBlockCount = pendingBlockCount_;
-    }
-
     function addBlock(
         BlocksData storage self,
         BlockHeaderData memory blockHeader_,
@@ -107,6 +92,10 @@ library BlocksStorage {
         uint256 blockWork_
     ) internal onlyInitialized(self) {
         _addBlock(self, blockHeader_, blockHash_, blockHeight_, blockWork_);
+    }
+
+    function getPendingBlockCount(BlocksData storage self) internal view returns (uint256) {
+        return self.pendingBlockCount;
     }
 
     function getBlockHashByBlockHeight(
@@ -159,6 +148,33 @@ library BlocksStorage {
         return getBlockStatus(self, blockHash_) == status_;
     }
 
+    function getMainchainHeight(BlocksData storage self) internal view returns (uint256) {
+        return self.currentBlockHeight;
+    }
+
+    function getBlockData(
+        BlocksData storage self,
+        bytes32 blockHash_
+    ) internal view returns (BlockData memory) {
+        return self.blocksData[blockHash_];
+    }
+
+    function getNextMainchainBlock(
+        BlocksData storage self,
+        bytes32 blockHash_
+    ) internal view returns (bytes32) {
+        return self.mainchain[blockHash_];
+    }
+
+    function isInMainchain(
+        BlocksData storage self,
+        bytes32 blockHash_
+    ) internal view returns (bool) {
+        BlockData storage blockData = self.blocksData[blockHash_];
+
+        return self.mainchain[blockData.header.prevBlockHash] == blockHash_;
+    }
+
     function getBlockStatus(
         BlocksData storage self,
         bytes32 blockHash_
@@ -192,18 +208,33 @@ library BlocksStorage {
             return 0;
         }
 
-        uint256[] memory blocksTime = new uint256[](MEDIAN_PAST_BLOCKS);
-        uint256 blocksTimeIndex = MEDIAN_PAST_BLOCKS - 1;
+        uint256[] memory blocksTime_ = new uint256[](MEDIAN_PAST_BLOCKS);
+        uint256 blocksTimeIndex_ = MEDIAN_PAST_BLOCKS;
 
         for (uint256 i = blockHeight_ - MEDIAN_PAST_BLOCKS; i < blockHeight_; ++i) {
-            blocksTime[blocksTimeIndex--] = self.blocksData[toBlockHash_].header.time;
+            blocksTime_[--blocksTimeIndex_] = self.blocksData[toBlockHash_].header.time;
 
             toBlockHash_ = self.blocksData[toBlockHash_].header.prevBlockHash;
         }
 
-        LibSort.insertionSort(blocksTime);
+        LibSort.insertionSort(blocksTime_);
 
-        return uint32(blocksTime[MEDIAN_PAST_BLOCKS / 2]);
+        return uint32(blocksTime_[MEDIAN_PAST_BLOCKS / 2]);
+    }
+
+    function _initialize(
+        BlocksData storage self,
+        BlockHeaderData memory startBlockHeader_,
+        bytes32 startBlockHash_,
+        uint256 startBlockHeight_,
+        uint256 startBlockWork_,
+        uint256 pendingBlockCount_
+    ) private {
+        require(!_isInitialized(self), BlocksStorageAlreadyInitialized());
+
+        _addBlock(self, startBlockHeader_, startBlockHash_, startBlockHeight_, startBlockWork_);
+
+        self.pendingBlockCount = pendingBlockCount_;
     }
 
     function _addBlock(
@@ -225,7 +256,9 @@ library BlocksStorage {
 
         bytes32 mainchainHead_ = self.heightToBlockHash[self.currentBlockHeight];
 
-        if (self.blocksData[mainchainHead_].cumulativeWork < newBlockCumulativeWork_) {
+        if (self.blocksData[mainchainHead_].cumulativeWork <= newBlockCumulativeWork_) {
+            self.currentBlockHeight = blockHeight_;
+
             _updateMainchain(self, blockHash_);
         }
     }
@@ -241,7 +274,7 @@ library BlocksStorage {
             blockHash_ = prevBlockHash_;
             blockData = self.blocksData[blockHash_];
             prevBlockHash_ = blockData.header.prevBlockHash;
-        } while (self.mainchain[prevBlockHash_] != blockHash_);
+        } while (self.mainchain[prevBlockHash_] != blockHash_ && prevBlockHash_ != 0);
     }
 
     function _onlyInitialized(BlocksData storage self) private view {
