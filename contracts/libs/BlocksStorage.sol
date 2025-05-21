@@ -22,7 +22,7 @@ library BlocksStorage {
         Unknown,
         Pending,
         Stale,
-        Active
+        Confirmed
     }
 
     struct BlockData {
@@ -195,7 +195,7 @@ library BlocksStorage {
             return BlockStatus.Stale;
         }
 
-        return BlockStatus.Active;
+        return BlockStatus.Confirmed;
     }
 
     function getMedianTime(

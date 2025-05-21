@@ -29,5 +29,5 @@ export enum BlockStatus {
   Unknown = 0,
   Pending = 1,
   Stale = 2,
-  Active = 3,
+  Confirmed = 3,
 }

@@ -151,7 +151,7 @@ describe("BlocksStorage", () => {
         if (i > defaultPendingBlocksCount) {
           expect(
             await blocksStorageLib.getBlockStatus(blocksData[i - defaultPendingBlocksCount - 1].blockHash),
-          ).to.be.eq(BlockStatus.Active);
+          ).to.be.eq(BlockStatus.Confirmed);
         }
       }
     });
@@ -202,7 +202,7 @@ describe("BlocksStorage", () => {
         if (i > defaultPendingBlocksCount) {
           expect(
             await blocksStorageLib.getBlockStatus(blocksData[i - defaultPendingBlocksCount - 1].blockHash),
-          ).to.be.eq(BlockStatus.Active);
+          ).to.be.eq(BlockStatus.Confirmed);
         }
       }
     });
