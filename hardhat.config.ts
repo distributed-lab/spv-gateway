@@ -2,8 +2,6 @@ import "@nomicfoundation/hardhat-verify";
 import "@nomicfoundation/hardhat-ethers";
 import "@nomicfoundation/hardhat-chai-matchers";
 
-import "@solarity/chai-zkit";
-import "@solarity/hardhat-zkit";
 import "@solarity/hardhat-migrate";
 import "@solarity/hardhat-gobind";
 import "@solarity/hardhat-markup";
@@ -40,38 +38,6 @@ const config: HardhatUserConfig = {
       accounts: privateKey(),
       gasMultiplier: 1.2,
     },
-    chapel: {
-      url: "https://data-seed-prebsc-1-s1.binance.org:8545",
-      accounts: privateKey(),
-      gasMultiplier: 1.2,
-      timeout: 60000,
-    },
-    fuji: {
-      url: `https://avalanche-fuji.infura.io/v3/${process.env.INFURA_KEY}`,
-      accounts: privateKey(),
-      gasMultiplier: 1.2,
-    },
-    bsc: {
-      url: "https://bsc-dataseed.binance.org/",
-      accounts: privateKey(),
-      gasMultiplier: 1.2,
-    },
-    ethereum: {
-      url: `https://mainnet.infura.io/v3/${process.env.INFURA_KEY}`,
-      accounts: privateKey(),
-      gasMultiplier: 1.2,
-    },
-    polygon: {
-      url: `https://matic-mainnet.chainstacklabs.com`,
-      accounts: privateKey(),
-      gasMultiplier: 1.2,
-    },
-    avalanche: {
-      url: `https://api.avax.network/ext/bc/C/rpc`,
-      accounts: privateKey(),
-      gasMultiplier: 1.2,
-      timeout: 60000,
-    },
   },
   solidity: {
     version: "0.8.28",
@@ -81,11 +47,6 @@ const config: HardhatUserConfig = {
         runs: 200,
       },
       evmVersion: "paris",
-    },
-  },
-  zkit: {
-    compilationSettings: {
-      onlyFiles: [],
     },
   },
   etherscan: {
@@ -116,8 +77,9 @@ const config: HardhatUserConfig = {
   gasReporter: {
     currency: "USD",
     gasPrice: 50,
-    enabled: false,
+    enabled: true,
     coinmarketcap: `${process.env.COINMARKETCAP_KEY}`,
+    reportPureAndViewMethods: true,
   },
   typechain: {
     outDir: "generated-types/ethers",

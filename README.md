@@ -1,12 +1,42 @@
-# Hardhat template 
+# SPV Contracts
 
-Template hardhat repository for ad-hoc smart contracts development.
+Smart contract for verifying Bitcoin block headers on EVM-compatible chains using the **Simple Payment Verification (SPV)** method.
 
-### How to use
+This contract behaves like an SPV node: it builds a valid chain of Bitcoin block headers, verifies them according to Bitcoin consensus rules, and enables Merkle Proof-based verification of Bitcoin transactions.
 
-The template works out of the box. To clean up the repo, you may need to delete the mock contracts, tests and migration files.
+## Features
 
-#### Compilation
+- Stores and verifies Bitcoin block headers
+- Validates headers using:
+  - Proof of Work (`bits` → `target`)
+  - Median time rule
+  - Chain continuity
+- Handles difficulty adjustment every 2016 blocks
+- Supports pending difficulty epochs before finalization
+- Stores historical targets and supports reorg handling
+
+## Contract: `SPVContract.sol`
+
+### Key Functions
+
+#### `addBlockHeader(bytes calldata blockHeaderRaw)`
+Adds and validates a new block header, updates internal state, and emits an event.
+
+### Validation Rules
+- `prevBlockHash` must point to a known block
+- New `blockHash` must not exist
+- Header `bits` must match the expected network target
+- Header `time` must be > median of last 11 blocks
+- `blockHash` must be less than or equal to the target (valid PoW)
+
+## Storage Structure
+
+- `BlocksData` – stores block headers, timestamps, and chain height
+- `TargetsData` – handles target values and difficulty epochs
+- `pendingTargetHeightCount` – controls target finalization after N blocks
+
+## Dev Info
+### Compilation
 
 To compile the contracts, use the next script:
 
@@ -14,7 +44,7 @@ To compile the contracts, use the next script:
 npm run compile
 ```
 
-#### Test
+### Test
 
 To run the tests, execute the following command:
 
@@ -28,7 +58,7 @@ Or to see the coverage, run:
 npm run coverage
 ```
 
-#### Local deployment
+### Local deployment
 
 To deploy the contracts locally, run the following commands (in the different terminals):
 
@@ -37,28 +67,10 @@ npm run private-network
 npm run deploy-localhost
 ```
 
-#### Bindings
+### Bindings
 
 The command to generate the bindings is as follows:
 
 ```bash
 npm run generate-types
 ```
-
-> See the full list of available commands in the `package.json` file.
-
-### Integrated plugins
-
-- Hardhat official `ethers` + `ethers-v6`
-- [`Typechain`](https://www.npmjs.com/package/@typechain/hardhat)
-- [`hardhat-migrate`](https://www.npmjs.com/package/@solarity/hardhat-migrate), [`hardhat-markup`](https://www.npmjs.com/package/@solarity/hardhat-markup), [`hardhat-gobind`](https://www.npmjs.com/package/@solarity/hardhat-gobind)
-- [`hardhat-zkit`](https://www.npmjs.com/package/@solarity/hardhat-zkit), [`chai-zkit`](https://www.npmjs.com/package/@solarity/chai-zkit)
-- [`hardhat-contract-sizer`](https://www.npmjs.com/package/hardhat-contract-sizer)
-- [`hardhat-gas-reporter`](https://www.npmjs.com/package/hardhat-gas-reporter)
-- [`solidity-coverage`](https://www.npmjs.com/package/solidity-coverage)
-
-### Other niceties
-
-- The template comes with presetup `prettier` and `solhint` that lint the project via `husky` before compilation hook.
-- The `.env.example` file is provided to check what is required as ENVs
-- Preinstalled `@openzeppelin/contracts` and `@solarity/solidity-lib`
