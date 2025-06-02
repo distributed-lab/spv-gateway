@@ -7,7 +7,7 @@ import {
   Reverter,
   bitsToTarget,
   getBlockHeaderData,
-  DIFFICULTY_ADJSTMENT_INTERVAL,
+  DIFFICULTY_ADJUSTMENT_INTERVAL,
   INITIAL_TARGET,
   calculateWork,
 } from "@test-helpers";
@@ -36,7 +36,7 @@ describe("TargetsHelper", () => {
   describe("#countNewTarget", () => {
     it("should correctly count new target for the first epochs", async () => {
       const firstEpochBlockData = getBlockHeaderData(firstBlocksDataFilePath, 1);
-      const lastEpochBlockData = getBlockHeaderData(firstBlocksDataFilePath, DIFFICULTY_ADJSTMENT_INTERVAL);
+      const lastEpochBlockData = getBlockHeaderData(firstBlocksDataFilePath, DIFFICULTY_ADJUSTMENT_INTERVAL);
 
       const actualPassedTime =
         BigInt(lastEpochBlockData.parsedBlockHeader.time) - BigInt(firstEpochBlockData.parsedBlockHeader.time);
@@ -50,7 +50,7 @@ describe("TargetsHelper", () => {
       const firstEpochBlockData = getBlockHeaderData(newestBlocksDataFilePath, startEpochHeight);
       const lastEpochBlockData = getBlockHeaderData(
         newestBlocksDataFilePath,
-        startEpochHeight + DIFFICULTY_ADJSTMENT_INTERVAL - 1,
+        startEpochHeight + DIFFICULTY_ADJUSTMENT_INTERVAL - 1,
       );
 
       const actualPassedTime =
@@ -68,7 +68,7 @@ describe("TargetsHelper", () => {
       const roundedTarget = await targetsHelperLib.roundTarget(expectedTarget);
       const nextEpochBlock = getBlockHeaderData(
         newestBlocksDataFilePath,
-        startEpochHeight + DIFFICULTY_ADJSTMENT_INTERVAL + 1,
+        startEpochHeight + DIFFICULTY_ADJUSTMENT_INTERVAL + 1,
       );
 
       expect(bitsToTarget(nextEpochBlock.parsedBlockHeader.bits)).to.be.eq(roundedTarget);
@@ -78,7 +78,7 @@ describe("TargetsHelper", () => {
   describe("#countNewRoundedTarget", async () => {
     it("should correctly count new target for the first epochs", async () => {
       const firstEpochBlockData = getBlockHeaderData(firstBlocksDataFilePath, 1);
-      const lastEpochBlockData = getBlockHeaderData(firstBlocksDataFilePath, DIFFICULTY_ADJSTMENT_INTERVAL);
+      const lastEpochBlockData = getBlockHeaderData(firstBlocksDataFilePath, DIFFICULTY_ADJUSTMENT_INTERVAL);
 
       const actualPassedTime =
         BigInt(lastEpochBlockData.parsedBlockHeader.time) - BigInt(firstEpochBlockData.parsedBlockHeader.time);
@@ -92,19 +92,19 @@ describe("TargetsHelper", () => {
       let firstEpochBlockData = getBlockHeaderData(newestBlocksDataFilePath, startEpochHeight);
       let lastEpochBlockData = getBlockHeaderData(
         newestBlocksDataFilePath,
-        startEpochHeight + DIFFICULTY_ADJSTMENT_INTERVAL - 1,
+        startEpochHeight + DIFFICULTY_ADJUSTMENT_INTERVAL - 1,
       );
 
       let currentTarget = bitsToTarget(lastEpochBlockData.parsedBlockHeader.bits);
       let actualPassedTime =
         BigInt(lastEpochBlockData.parsedBlockHeader.time) - BigInt(firstEpochBlockData.parsedBlockHeader.time);
 
-      startEpochHeight += DIFFICULTY_ADJSTMENT_INTERVAL;
+      startEpochHeight += DIFFICULTY_ADJUSTMENT_INTERVAL;
 
       firstEpochBlockData = getBlockHeaderData(newestBlocksDataFilePath, startEpochHeight);
       lastEpochBlockData = getBlockHeaderData(
         newestBlocksDataFilePath,
-        startEpochHeight + DIFFICULTY_ADJSTMENT_INTERVAL - 1,
+        startEpochHeight + DIFFICULTY_ADJUSTMENT_INTERVAL - 1,
       );
 
       let newEpochTarget = bitsToTarget(lastEpochBlockData.parsedBlockHeader.bits);
@@ -117,7 +117,7 @@ describe("TargetsHelper", () => {
 
       const nextEpochBlockData = getBlockHeaderData(
         newestBlocksDataFilePath,
-        startEpochHeight + DIFFICULTY_ADJSTMENT_INTERVAL + 1,
+        startEpochHeight + DIFFICULTY_ADJUSTMENT_INTERVAL + 1,
       );
       newEpochTarget = bitsToTarget(nextEpochBlockData.parsedBlockHeader.bits);
 
