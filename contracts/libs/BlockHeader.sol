@@ -22,7 +22,7 @@ library BlockHeader {
     function getBlockHeaderHash(bytes calldata blockHeaderRaw_) internal pure returns (bytes32) {
         bytes32 rawBlockHash_ = sha256(abi.encode(sha256(blockHeaderRaw_)));
 
-        return reverseHash(rawBlockHash_);
+        return _reverseHash(rawBlockHash_);
     }
 
     function parseBlockHeaderData(
@@ -35,8 +35,8 @@ library BlockHeader {
 
         headerData_ = BlockHeaderData({
             version: uint32(_reverseBytes(blockHeaderRaw_[0:4])),
-            prevBlockHash: reverseHash(bytes32(blockHeaderRaw_[4:36])),
-            merkleRoot: reverseHash(bytes32(blockHeaderRaw_[36:68])),
+            prevBlockHash: _reverseHash(bytes32(blockHeaderRaw_[4:36])),
+            merkleRoot: _reverseHash(bytes32(blockHeaderRaw_[36:68])),
             time: uint32(_reverseBytes(blockHeaderRaw_[68:72])),
             bits: bytes4(uint32(_reverseBytes(blockHeaderRaw_[72:76]))),
             nonce: uint32(_reverseBytes(blockHeaderRaw_[76:80]))
@@ -48,15 +48,15 @@ library BlockHeader {
         return
             abi.encodePacked(
                 _reverseUint32(headerData_.version),
-                reverseHash(headerData_.prevBlockHash),
-                reverseHash(headerData_.merkleRoot),
+                _reverseHash(headerData_.prevBlockHash),
+                _reverseHash(headerData_.merkleRoot),
                 _reverseUint32(headerData_.time),
                 _reverseUint32(uint32(headerData_.bits)),
                 _reverseUint32(headerData_.nonce)
             );
     }
 
-    function reverseHash(bytes32 blockHash_) internal pure returns (bytes32) {
+    function _reverseHash(bytes32 blockHash_) private pure returns (bytes32) {
         return bytes32(uint256(blockHash_).reverseBytes());
     }
 

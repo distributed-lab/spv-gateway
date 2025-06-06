@@ -2,7 +2,6 @@
 pragma solidity ^0.8.28;
 
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import {LibSort} from "solady/src/utils/LibSort.sol";
 
@@ -12,7 +11,6 @@ import {TargetsHelper} from "./libs/TargetsHelper.sol";
 import {ISPVContract} from "./interfaces/ISPVContract.sol";
 
 contract SPVContract is ISPVContract, Initializable {
-    using EnumerableSet for EnumerableSet.Bytes32Set;
     using BlockHeader for bytes;
     using TargetsHelper for bytes32;
 
@@ -28,6 +26,16 @@ contract SPVContract is ISPVContract, Initializable {
         uint256 lastEpochCumulativeWork;
     }
 
+    modifier broadcastMainchainUpdateEvent() {
+        bytes32 currentMainchain_ = getMainchainHead();
+        _;
+        bytes32 newMainchainHead_ = getMainchainHead();
+
+        if (currentMainchain_ != newMainchainHead_) {
+            emit MainchainHeadUpdated(getBlockHeight(newMainchainHead_), newMainchainHead_);
+        }
+    }
+
     function __SPVContract_init() external initializer {
         BlockHeaderData memory genesisBlockHeader_ = BlockHeaderData({
             version: 1,
@@ -40,6 +48,28 @@ contract SPVContract is ISPVContract, Initializable {
         bytes32 genesisBlockHash_ = 0x000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f;
 
         _addBlock(genesisBlockHeader_, genesisBlockHash_, 0);
+
+        emit MainchainHeadUpdated(0, genesisBlockHash_);
+    }
+
+    function __SPVContract_init(
+        bytes calldata blockHeaderRaw_,
+        uint256 blockHeight_,
+        uint256 cumulativeWork_
+    ) external initializer {
+        (BlockHeaderData memory blockHeader_, bytes32 blockHash_) = _parseBlockHeaderRaw(
+            blockHeaderRaw_
+        );
+
+        require(
+            TargetsHelper.isTargetAdjustmentBlock(blockHeight_),
+            InvalidInitialBlockHeight(blockHeight_)
+        );
+
+        _addBlock(blockHeader_, blockHash_, blockHeight_);
+        _getSPVContractStorage().lastEpochCumulativeWork = cumulativeWork_;
+
+        emit MainchainHeadUpdated(blockHeight_, blockHash_);
     }
 
     function _getSPVContractStorage() private pure returns (SPVContractStorage storage _spvs) {
@@ -50,104 +80,115 @@ contract SPVContract is ISPVContract, Initializable {
         }
     }
 
-    function addBlockHeader(bytes calldata blockHeaderRaw_) external {
-        SPVContractStorage storage $ = _getSPVContractStorage();
+    function addBlockHeaderBatch(
+        bytes[] calldata blockHeaderRawArray_
+    ) external broadcastMainchainUpdateEvent {
+        (
+            BlockHeaderData[] memory blockHeaders_,
+            bytes32[] memory blockHashes_
+        ) = _parseBlockHeadersRaw(blockHeaderRawArray_);
 
-        (BlockHeaderData memory blockHeader_, bytes32 blockHash_) = blockHeaderRaw_
-            .parseBlockHeaderData();
+        uint256 firstBlockHeight_ = getBlockHeight(blockHeaders_[0].prevBlockHash) + 1;
+        bytes32 currentTarget_ = getBlockTarget(blockHeaders_[0].prevBlockHash);
 
-        require(!blockExists(blockHash_), BlockAlreadyExists(blockHash_));
+        for (uint256 i = 0; i < blockHeaderRawArray_.length; i++) {
+            uint256 currentBlockHeight_ = firstBlockHeight_ + i;
+
+            currentTarget_ = _updateLastEpochCumulativeWork(currentTarget_, currentBlockHeight_);
+
+            uint32 medianTime_;
+
+            if (i < MEDIAN_PAST_BLOCKS) {
+                medianTime_ = _getStorageMedianTime(blockHeaders_[i], currentBlockHeight_);
+            } else {
+                medianTime_ = _getMemoryMedianTime(blockHeaders_, i);
+            }
+
+            _validateBlockRules(blockHeaders_[i], blockHashes_[i], currentTarget_, medianTime_);
+
+            _addBlock(blockHeaders_[i], blockHashes_[i], currentBlockHeight_);
+        }
+    }
+
+    function addBlockHeader(
+        bytes calldata blockHeaderRaw_
+    ) external broadcastMainchainUpdateEvent {
+        (BlockHeaderData memory blockHeader_, bytes32 blockHash_) = _parseBlockHeaderRaw(
+            blockHeaderRaw_
+        );
+
         require(
             blockExists(blockHeader_.prevBlockHash),
             PrevBlockDoesNotExist(blockHeader_.prevBlockHash)
         );
 
-        uint256 blockHeight_ = $.blocksData[blockHeader_.prevBlockHash].blockHeight + 1;
+        uint256 blockHeight_ = getBlockHeight(blockHeader_.prevBlockHash) + 1;
         bytes32 currentTarget_ = getBlockTarget(blockHeader_.prevBlockHash);
 
-        if (TargetsHelper.isTargetAdjustmentBlock(blockHeight_)) {
-            $.lastEpochCumulativeWork += TargetsHelper.countEpochCumulativeWork(currentTarget_);
-
-            uint256 passedTime_ = blockHeader_.time -
-                getBlockTimeByBlockHeight(
-                    blockHeight_ - TargetsHelper.DIFFICULTY_ADJUSTMENT_INTERVAL
-                );
-            currentTarget_ = TargetsHelper.countNewRoundedTarget(currentTarget_, passedTime_);
-        }
+        currentTarget_ = _updateLastEpochCumulativeWork(currentTarget_, blockHeight_);
 
         _validateBlockRules(
             blockHeader_,
             blockHash_,
             currentTarget_,
-            getMedianTime(blockHeader_.prevBlockHash)
+            _getStorageMedianTime(blockHeader_, blockHeight_)
         );
 
         _addBlock(blockHeader_, blockHash_, blockHeight_);
-
-        emit BlockHeaderAdded(blockHeight_, blockHash_);
     }
 
-    function getMainchainHead() external view returns (bytes32) {
+    function getBlockMerkleRoot(bytes32 blockHash_) external view returns (bytes32) {
+        return _getBlockHeader(blockHash_).merkleRoot;
+    }
+
+    function getBlockInfo(bytes32 blockHash_) external view returns (BlockInfo memory blockInfo_) {
+        if (!blockExists(blockHash_)) {
+            return blockInfo_;
+        }
+
+        BlockData memory blockData_ = getBlockData(blockHash_);
+
+        blockInfo_ = BlockInfo({
+            mainBlockData: blockData_,
+            isInMainchain: isInMainchain(blockHash_),
+            cumulativeWork: _getBlockCumulativeWork(blockData_.blockHeight, blockHash_)
+        });
+    }
+
+    function getLastEpochCumulativeWork() external view returns (uint256) {
+        return _getSPVContractStorage().lastEpochCumulativeWork;
+    }
+
+    function getMainchainHead() public view returns (bytes32) {
         return _getSPVContractStorage().mainchainHead;
     }
 
-    function getBlockHeight(bytes32 blockHash_) external view returns (uint256) {
+    function getBlockData(bytes32 blockHash_) public view returns (BlockData memory) {
+        return _getSPVContractStorage().blocksData[blockHash_];
+    }
+
+    function getBlockHeight(bytes32 blockHash_) public view returns (uint256) {
         return _getSPVContractStorage().blocksData[blockHash_].blockHeight;
     }
 
-    function getBlockHash(uint256 blockHeight_) external view returns (bytes32) {
+    function getBlockHash(uint256 blockHeight_) public view returns (bytes32) {
         return _getSPVContractStorage().blocksHeightToBlockHash[blockHeight_];
     }
 
-    function getBlockTimeByBlockHeight(uint256 blockHeight_) public view returns (uint32) {
-        SPVContractStorage storage $ = _getSPVContractStorage();
-
-        return $.blocksData[$.blocksHeightToBlockHash[blockHeight_]].header.time;
-    }
-
     function getBlockTarget(bytes32 blockHash_) public view returns (bytes32) {
-        return
-            TargetsHelper.bitsToTarget(
-                _getSPVContractStorage().blocksData[blockHash_].header.bits
-            );
+        return TargetsHelper.bitsToTarget(_getBlockHeader(blockHash_).bits);
     }
 
     function blockExists(bytes32 blockHash_) public view returns (bool) {
-        return _getSPVContractStorage().blocksData[blockHash_].header.time > 0;
+        return _getBlockHeader(blockHash_).time > 0;
     }
 
     function getMainchainBlockHeight() public view returns (uint256) {
-        SPVContractStorage storage $ = _getSPVContractStorage();
-
-        return $.blocksData[$.mainchainHead].blockHeight;
-    }
-
-    function getMedianTime(bytes32 toBlockHash_) public view returns (uint32) {
-        SPVContractStorage storage $ = _getSPVContractStorage();
-        uint256 blockHeight_ = $.blocksData[toBlockHash_].blockHeight;
-
-        if (blockHeight_ <= MEDIAN_PAST_BLOCKS || getMainchainBlockHeight() < MEDIAN_PAST_BLOCKS) {
-            return 0;
-        }
-
-        uint256[] memory blocksTime_ = new uint256[](MEDIAN_PAST_BLOCKS);
-        uint256 blocksTimeIndex_ = MEDIAN_PAST_BLOCKS;
-
-        for (uint256 i = blockHeight_ - MEDIAN_PAST_BLOCKS; i < blockHeight_; ++i) {
-            blocksTime_[--blocksTimeIndex_] = $.blocksData[toBlockHash_].header.time;
-
-            toBlockHash_ = $.blocksData[toBlockHash_].header.prevBlockHash;
-        }
-
-        LibSort.insertionSort(blocksTime_);
-
-        return uint32(blocksTime_[MEDIAN_PAST_BLOCKS / 2]);
+        return getBlockHeight(_getSPVContractStorage().mainchainHead);
     }
 
     function isInMainchain(bytes32 blockHash_) public view returns (bool) {
-        SPVContractStorage storage $ = _getSPVContractStorage();
-
-        return $.blocksHeightToBlockHash[$.blocksData[blockHash_].blockHeight] == blockHash_;
+        return getBlockHash(getBlockHeight(blockHash_)) == blockHash_;
     }
 
     function _addBlock(
@@ -160,6 +201,8 @@ contract SPVContract is ISPVContract, Initializable {
         $.blocksData[blockHash_] = BlockData({header: blockHeader_, blockHeight: blockHeight_});
 
         _updateMainchainHead(blockHeader_, blockHash_, blockHeight_);
+
+        emit BlockHeaderAdded(blockHeight_, blockHash_);
     }
 
     function _updateMainchainHead(
@@ -171,7 +214,7 @@ contract SPVContract is ISPVContract, Initializable {
 
         bytes32 mainchainHead = $.mainchainHead;
 
-        if (blockHeader_.prevBlockHash == mainchainHead) {
+        if (blockHeader_.prevBlockHash == mainchainHead || mainchainHead == 0) {
             $.mainchainHead = blockHash_;
             $.blocksHeightToBlockHash[blockHeight_] = blockHash_;
 
@@ -179,13 +222,10 @@ contract SPVContract is ISPVContract, Initializable {
         }
 
         uint256 mainchainCumulativeWork_ = _getBlockCumulativeWork(
-            $.blocksData[mainchainHead].blockHeight,
-            getBlockTarget(mainchainHead)
+            getBlockHeight(mainchainHead),
+            mainchainHead
         );
-        uint256 newBlockCumulativeWork_ = _getBlockCumulativeWork(
-            blockHeight_,
-            getBlockTarget(blockHash_)
-        );
+        uint256 newBlockCumulativeWork_ = _getBlockCumulativeWork(blockHeight_, blockHash_);
 
         if (newBlockCumulativeWork_ > mainchainCumulativeWork_) {
             $.mainchainHead = blockHash_;
@@ -193,31 +233,146 @@ contract SPVContract is ISPVContract, Initializable {
 
             bytes32 prevBlockHash_ = blockHeader_.prevBlockHash;
             uint256 prevBlockHeight_ = blockHeight_ - 1;
-            while (true) {
-                if (
-                    $.blocksHeightToBlockHash[prevBlockHeight_] == prevBlockHash_ ||
-                    prevBlockHash_ == 0
-                ) {
-                    break;
-                }
 
+            do {
                 $.blocksHeightToBlockHash[prevBlockHeight_] = prevBlockHash_;
 
-                prevBlockHash_ = $.blocksData[prevBlockHash_].header.prevBlockHash;
+                prevBlockHash_ = _getBlockHeader(prevBlockHash_).prevBlockHash;
                 prevBlockHeight_ -= 1;
+            } while (getBlockHash(prevBlockHeight_) != prevBlockHash_ && prevBlockHash_ != 0);
+        }
+    }
+
+    function _updateLastEpochCumulativeWork(
+        bytes32 currentTarget_,
+        uint256 blockHeight_
+    ) internal returns (bytes32) {
+        SPVContractStorage storage $ = _getSPVContractStorage();
+
+        if (TargetsHelper.isTargetAdjustmentBlock(blockHeight_)) {
+            $.lastEpochCumulativeWork += TargetsHelper.countEpochCumulativeWork(currentTarget_);
+
+            uint256 epochStartTime_ = _getBlockHeader(
+                getBlockHash(blockHeight_ - TargetsHelper.DIFFICULTY_ADJUSTMENT_INTERVAL)
+            ).time;
+            uint256 epochEndTime_ = _getBlockHeader(getBlockHash(blockHeight_ - 1)).time;
+            uint256 passedTime_ = epochEndTime_ - epochStartTime_;
+
+            currentTarget_ = TargetsHelper.countNewRoundedTarget(currentTarget_, passedTime_);
+        }
+
+        return currentTarget_;
+    }
+
+    function _parseBlockHeadersRaw(
+        bytes[] calldata blockHeaderRawArray_
+    )
+        internal
+        view
+        returns (BlockHeaderData[] memory blockHeaders_, bytes32[] memory blockHashes_)
+    {
+        require(blockHeaderRawArray_.length > 0, EmptyBlockHeaderArray());
+
+        blockHeaders_ = new BlockHeaderData[](blockHeaderRawArray_.length);
+        blockHashes_ = new bytes32[](blockHeaderRawArray_.length);
+
+        for (uint256 i = 0; i < blockHeaderRawArray_.length; i++) {
+            (blockHeaders_[i], blockHashes_[i]) = _parseBlockHeaderRaw(blockHeaderRawArray_[i]);
+
+            if (i == 0) {
+                require(
+                    blockExists(blockHeaders_[i].prevBlockHash),
+                    PrevBlockDoesNotExist(blockHeaders_[i].prevBlockHash)
+                );
+            } else {
+                require(
+                    blockHeaders_[i].prevBlockHash == blockHashes_[i - 1],
+                    InvalidBlockHeadersOrder()
+                );
             }
         }
     }
 
+    function _parseBlockHeaderRaw(
+        bytes calldata blockHeaderRaw_
+    ) internal view returns (BlockHeaderData memory blockHeader_, bytes32 blockHash_) {
+        (blockHeader_, blockHash_) = blockHeaderRaw_.parseBlockHeaderData();
+
+        _onlyNonExistingBlock(blockHash_);
+    }
+
+    function _getStorageMedianTime(
+        BlockHeaderData memory blockHeader_,
+        uint256 blockHeight_
+    ) internal view returns (uint32) {
+        if (blockHeight_ == 1) {
+            return blockHeader_.time;
+        }
+
+        bytes32 toBlockHash_ = blockHeader_.prevBlockHash;
+
+        if (blockHeight_ - 1 < MEDIAN_PAST_BLOCKS) {
+            return _getBlockHeader(toBlockHash_).time;
+        }
+
+        uint256[] memory blocksTime_ = new uint256[](MEDIAN_PAST_BLOCKS);
+        bool needsSort_;
+
+        for (uint256 i = MEDIAN_PAST_BLOCKS; i > 0; --i) {
+            uint32 currentTime_ = _getBlockHeader(toBlockHash_).time;
+
+            blocksTime_[i - 1] = currentTime_;
+            toBlockHash_ = _getBlockHeader(toBlockHash_).prevBlockHash;
+
+            if (i < MEDIAN_PAST_BLOCKS && currentTime_ > blocksTime_[i]) {
+                needsSort_ = true;
+            }
+        }
+
+        return _getMedianTime(blocksTime_, needsSort_);
+    }
+
+    function _getMemoryMedianTime(
+        BlockHeaderData[] memory blockHeaders_,
+        uint256 to_
+    ) internal pure returns (uint32) {
+        if (blockHeaders_.length < MEDIAN_PAST_BLOCKS) {
+            return 0;
+        }
+
+        uint256[] memory blocksTime_ = new uint256[](MEDIAN_PAST_BLOCKS);
+        bool needsSort_;
+
+        for (uint256 i = 0; i < MEDIAN_PAST_BLOCKS; ++i) {
+            uint32 currentTime_ = blockHeaders_[to_ - MEDIAN_PAST_BLOCKS + i].time;
+
+            blocksTime_[i] = currentTime_;
+
+            if (i > 0 && currentTime_ < blocksTime_[i - 1]) {
+                needsSort_ = true;
+            }
+        }
+
+        return _getMedianTime(blocksTime_, needsSort_);
+    }
+
     function _getBlockCumulativeWork(
         uint256 blockHeight_,
-        bytes32 target_
+        bytes32 blockHash_
     ) internal view returns (uint256) {
-        uint256 currentEpochCumulativeWork_ = target_.countCumulativeWork(
+        uint256 currentEpochCumulativeWork_ = getBlockTarget(blockHash_).countCumulativeWork(
             TargetsHelper.getEpochBlockNumber(blockHeight_) + 1
         );
 
         return _getSPVContractStorage().lastEpochCumulativeWork + currentEpochCumulativeWork_;
+    }
+
+    function _getBlockHeader(bytes32 blockHash_) internal view returns (BlockHeaderData storage) {
+        return _getSPVContractStorage().blocksData[blockHash_].header;
+    }
+
+    function _onlyNonExistingBlock(bytes32 blockHash_) internal view {
+        require(!blockExists(blockHash_), BlockAlreadyExists(blockHash_));
     }
 
     function _validateBlockRules(
@@ -230,6 +385,20 @@ contract SPVContract is ISPVContract, Initializable {
 
         require(target_ == blockTarget_, InvalidTarget(blockTarget_, target_));
         require(blockHash_ <= blockTarget_, InvalidBlockHash(blockHash_, blockTarget_));
-        require(blockHeader_.time > medianTime_, InvalidBlockTime(blockHeader_.time, medianTime_));
+        require(
+            blockHeader_.time >= medianTime_,
+            InvalidBlockTime(blockHeader_.time, medianTime_)
+        );
+    }
+
+    function _getMedianTime(
+        uint256[] memory blocksTime_,
+        bool needsSort_
+    ) internal pure returns (uint32) {
+        if (needsSort_) {
+            LibSort.insertionSort(blocksTime_);
+        }
+
+        return uint32(blocksTime_[MEDIAN_PAST_BLOCKS / 2]);
     }
 }

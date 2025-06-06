@@ -24,6 +24,19 @@ export function getBlockHeaderData(pathToDataFile: string, height: number): Bloc
   return formatBlockHeaderData(allBlocksDataArr[height - Number(firstElementHeight)]);
 }
 
+export function getBlockHeaderDataBatch(pathToDataFile: string, height: number, batchSize: number): BlockHeaderData[] {
+  const allBlocksDataArr = JSON.parse(fs.readFileSync(pathToDataFile, "utf-8")) as BlockHeaderData[];
+  const firstElementHeight = allBlocksDataArr[0].height;
+
+  const blocksData = [];
+
+  for (let i = 0; i < batchSize; i++) {
+    blocksData.push(formatBlockHeaderData(allBlocksDataArr[height + i - Number(firstElementHeight)]));
+  }
+
+  return blocksData;
+}
+
 export function checkBlockHeaderData(
   actualBlockHeaderData: BlockHeaderDataStructOutput,
   expectedBlockHeaderData: BlockHeaderData,
