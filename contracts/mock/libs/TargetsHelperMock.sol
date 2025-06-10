@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import {TargetsHelper} from "../../../libs/targets/TargetsHelper.sol";
+import {TargetsHelper} from "../../libs/TargetsHelper.sol";
 
 contract TargetsHelperMock {
     using TargetsHelper for bytes32;

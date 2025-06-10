@@ -10,6 +10,7 @@ library TargetsHelper {
      * 2016 blocks of 10 minutes each
      */
     uint256 public constant EXPECTED_TARGET_BLOCKS_TIME = 1209600;
+    uint256 public constant DIFFICULTY_ADJUSTMENT_INTERVAL = 2016;
 
     bytes32 public constant INITIAL_TARGET =
         0x00000000ffff0000000000000000000000000000000000000000000000000000;
@@ -19,6 +20,14 @@ library TargetsHelper {
 
     uint256 public constant MAX_TARGET_RATIO = TARGET_FIXED_POINT_FACTOR * MAX_TARGET_FACTOR;
     uint256 public constant MIN_TARGET_RATIO = TARGET_FIXED_POINT_FACTOR / MAX_TARGET_FACTOR;
+
+    function isTargetAdjustmentBlock(uint256 blockHeight_) internal pure returns (bool) {
+        return getEpochBlockNumber(blockHeight_) == 0 && blockHeight_ > 0;
+    }
+
+    function getEpochBlockNumber(uint256 blockHeight_) internal pure returns (uint256) {
+        return blockHeight_ % DIFFICULTY_ADJUSTMENT_INTERVAL;
+    }
 
     function countNewRoundedTarget(
         bytes32 currentTarget_,
@@ -41,6 +50,17 @@ library TargetsHelper {
         );
 
         return target_ > INITIAL_TARGET ? INITIAL_TARGET : target_;
+    }
+
+    function countEpochCumulativeWork(bytes32 epochTarget_) internal pure returns (uint256) {
+        return countCumulativeWork(epochTarget_, DIFFICULTY_ADJUSTMENT_INTERVAL);
+    }
+
+    function countCumulativeWork(
+        bytes32 epochTarget_,
+        uint256 blocksCount_
+    ) internal pure returns (uint256) {
+        return countBlockWork(epochTarget_) * blocksCount_;
     }
 
     function countBlockWork(bytes32 target_) internal pure returns (uint256 blockWork_) {

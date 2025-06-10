@@ -1,44 +1,50 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
+import {BlockHeader, BlockHeaderData} from "../libs/BlockHeader.sol";
+
 import {SPVContract} from "../SPVContract.sol";
 
-import {BlocksStorage} from "../libs/BlocksStorage.sol";
-import {TargetsStorage} from "../libs/targets/TargetsStorage.sol";
-
 contract SPVContractMock is SPVContract {
-    using BlocksStorage for BlocksStorage.BlocksData;
-    using TargetsStorage for TargetsStorage.TargetsData;
+    using BlockHeader for bytes;
 
-    function hasPendingTarget() external view returns (bool) {
-        return _getSPVContractStorage().targets.hasPendingTarget();
+    function __SPVContractMock_init(bytes calldata blockHeaderRaw_) external initializer {
+        (BlockHeaderData memory genesisBlockHeader_, bytes32 genesisBlockHash_) = blockHeaderRaw_
+            .parseBlockHeaderData();
+
+        _addBlock(genesisBlockHeader_, genesisBlockHash_, 0);
+
+        emit MainchainHeadUpdated(0, genesisBlockHash_);
     }
 
-    function getLastEpoch() external view returns (uint256) {
-        return _getSPVContractStorage().targets.getLastEpoch();
+    function getStorageMedianTime(
+        bytes calldata blockHeaderRaw_,
+        uint256 blockHeight_
+    ) external view returns (uint32) {
+        (BlockHeaderData memory blockHeader_, ) = blockHeaderRaw_.parseBlockHeaderData();
+
+        return _getStorageMedianTime(blockHeader_, blockHeight_);
     }
 
-    function getPendingEpoch() external view returns (uint256) {
-        return _getSPVContractStorage().targets.getPendingEpoch();
+    function getMemoryMedianTime(
+        bytes[] calldata blockHeaderRawArr_,
+        uint256 to_
+    ) external pure returns (uint32) {
+        BlockHeaderData[] memory blockHeaders_ = new BlockHeaderData[](blockHeaderRawArr_.length);
+
+        for (uint256 i = 0; i < blockHeaderRawArr_.length; i++) {
+            (blockHeaders_[i], ) = blockHeaderRawArr_[i].parseBlockHeaderData();
+        }
+
+        return _getMemoryMedianTime(blockHeaders_, to_);
     }
 
-    function getLastTarget() external view returns (bytes32) {
-        return _getSPVContractStorage().targets.getLastTarget();
-    }
-
-    function getPendingTarget(bytes32 blockHash_) external view returns (bytes32) {
-        return _getSPVContractStorage().targets.getPendingTarget(blockHash_);
-    }
-
-    function getTarget(uint256 targetEpoch_) external view returns (bytes32) {
-        return _getSPVContractStorage().targets.getTarget(targetEpoch_);
-    }
-
-    function getNextMainchainBlock(bytes32 blockHash_) external view returns (bytes32) {
-        return _getSPVContractStorage().blocksData.getNextMainchainBlock(blockHash_);
-    }
-
-    function isInMainchain(bytes32 blockHash_) external view returns (bool) {
-        return _getSPVContractStorage().blocksData.isInMainchain(blockHash_);
+    function validateBlockRules(
+        BlockHeaderData memory blockHeader_,
+        bytes32 blockHash_,
+        bytes32 target_,
+        uint32 medianTime_
+    ) external pure {
+        _validateBlockRules(blockHeader_, blockHash_, target_, medianTime_);
     }
 }
