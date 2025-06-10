@@ -5,7 +5,7 @@ import { randomInt } from "crypto";
 
 import { BlockHeaderDataStructOutput } from "@/generated-types/ethers/contracts/mock/libs/BlockHeaderMock";
 
-import { BlockHeaderData } from "./types";
+import { BlockHeaderData, ReorgBlocksData } from "./types";
 
 export function getRandomBlockHeaderData(pathToDataFile: string, minHeight: number, maxHeight: number) {
   const randHeight = randomInt(minHeight, maxHeight + 1);
@@ -15,6 +15,45 @@ export function getRandomBlockHeaderData(pathToDataFile: string, minHeight: numb
 
 export function getBlocksDataFilePath(fileName: string): string {
   return path.join(__dirname, "../data", fileName);
+}
+
+export function getReorgBlockHeaderData(
+  pathToDataFile: string,
+  height: number,
+  isMainchain: boolean = true,
+): BlockHeaderData {
+  const blocksData = JSON.parse(fs.readFileSync(pathToDataFile, "utf-8")) as ReorgBlocksData;
+  const firstElementHeight = isMainchain
+    ? blocksData.mainchainHeaders[0].height
+    : blocksData.forkChainHeaders[0].height;
+
+  return isMainchain
+    ? formatBlockHeaderData(blocksData.mainchainHeaders[height - Number(firstElementHeight)])
+    : formatBlockHeaderData(blocksData.forkChainHeaders[height - Number(firstElementHeight)]);
+}
+
+export function getReorgBlockHeaderDataBatch(
+  pathToDataFile: string,
+  height: number,
+  batchSize: number,
+  isMainchain: boolean = true,
+): BlockHeaderData[] {
+  const allBlocksDataArr = JSON.parse(fs.readFileSync(pathToDataFile, "utf-8")) as ReorgBlocksData;
+  const firstElementHeight = isMainchain
+    ? allBlocksDataArr.mainchainHeaders[0].height
+    : allBlocksDataArr.forkChainHeaders[0].height;
+
+  const blocksData = [];
+
+  for (let i = 0; i < batchSize; i++) {
+    blocksData.push(
+      isMainchain
+        ? formatBlockHeaderData(allBlocksDataArr.mainchainHeaders[height + i - Number(firstElementHeight)])
+        : formatBlockHeaderData(allBlocksDataArr.forkChainHeaders[height + i - Number(firstElementHeight)]),
+    );
+  }
+
+  return blocksData;
 }
 
 export function getBlockHeaderData(pathToDataFile: string, height: number): BlockHeaderData {

@@ -8,6 +8,15 @@ import {SPVContract} from "../SPVContract.sol";
 contract SPVContractMock is SPVContract {
     using BlockHeader for bytes;
 
+    function __SPVContractMock_init(bytes calldata blockHeaderRaw_) external initializer {
+        (BlockHeaderData memory genesisBlockHeader_, bytes32 genesisBlockHash_) = blockHeaderRaw_
+            .parseBlockHeaderData();
+
+        _addBlock(genesisBlockHeader_, genesisBlockHash_, 0);
+
+        emit MainchainHeadUpdated(0, genesisBlockHash_);
+    }
+
     function getStorageMedianTime(
         bytes calldata blockHeaderRaw_,
         uint256 blockHeight_

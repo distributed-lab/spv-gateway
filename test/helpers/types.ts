@@ -1,5 +1,10 @@
 import { BigNumberish } from "ethers";
 
+export type ReorgBlocksData = {
+  mainchainHeaders: BlockHeaderData[];
+  forkChainHeaders: BlockHeaderData[];
+};
+
 export type BlockHeaderData = {
   height: BigNumberish;
   blockHash: string;

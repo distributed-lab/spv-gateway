@@ -1,0 +1,39 @@
+version: "3"
+services:
+  bitcoind:
+    image: lncm/bitcoind:v26.0
+    container_name: bitcoind
+    restart: on-failure
+    stop_grace_period: 30s
+    user: 0:0
+    healthcheck:
+      test: [ "CMD", "bitcoin-cli", "getnetworkinfo" ]
+      interval: 2s
+    volumes:
+      - ./bitcoind.conf:/root/.bitcoin/bitcoin.conf
+      - ./volumes.dev/bitcoind:/root/.bitcoin
+    command: [ "-addnode=bitcoind2:18444" ]
+    entrypoint:
+      - "sh"
+      - "-c"
+      - "bitcoind"
+    ports:
+      - 18443:18443
+      - 18444:18444
+
+  bitcoind2:
+    image: lncm/bitcoind:v26.0
+    container_name: bitcoind2
+    restart: on-failure
+    stop_grace_period: 30s
+    user: 0:0
+    healthcheck:
+      test: [ "CMD", "bitcoin-cli", "getnetworkinfo" ]
+      interval: 2s
+    volumes:
+      - ./bitcoind.conf:/root/.bitcoin/bitcoin.conf
+      - ./volumes.dev/bitcoind2:/root/.bitcoin
+    command: [ "-addnode=bitcoind:18444" ]
+    ports:
+      - 18445:18443
+      - 18446:18444

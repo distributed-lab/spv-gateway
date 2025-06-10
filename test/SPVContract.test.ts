@@ -8,28 +8,32 @@ import {
   getBlockHeaderData,
   getBlockHeaderDataBatch,
   getBlocksDataFilePath,
+  getReorgBlockHeaderData,
+  getReorgBlockHeaderDataBatch,
   Reverter,
 } from "@test-helpers";
 
-import { BlockHeaderMock, SPVContractMock } from "@ethers-v6";
+import { SPVContractMock } from "@ethers-v6";
 
 describe("SPVContract", () => {
   const reverter = new Reverter();
 
   let spvContract: SPVContractMock;
-  let blockHeaderLib: BlockHeaderMock;
 
   let genesisBlockDataFilePath: string;
+  let regtestGenesisBlockDataFilePath: string;
   let firstBlocksDataFilePath: string;
   let newestBlocksDataFilePath: string;
+  let reorgBlocksDataFilePath: string;
 
   before(async () => {
     spvContract = await ethers.deployContract("SPVContractMock");
-    blockHeaderLib = await ethers.deployContract("BlockHeaderMock");
 
     genesisBlockDataFilePath = getBlocksDataFilePath("genesis_block.json");
+    regtestGenesisBlockDataFilePath = getBlocksDataFilePath("regtest_genesis_block.json");
     firstBlocksDataFilePath = getBlocksDataFilePath("headers_1_10000.json");
     newestBlocksDataFilePath = getBlocksDataFilePath("headers_800352_815000.json");
+    reorgBlocksDataFilePath = getBlocksDataFilePath("headers_16_18_reorg.json");
 
     await reverter.snapshot();
   });
@@ -296,6 +300,61 @@ describe("SPVContract", () => {
           );
         }
       }
+    });
+
+    it("should correctly update mainchain with the longest chain", async () => {
+      const genesisData = getBlockHeaderData(regtestGenesisBlockDataFilePath, 0);
+
+      await spvContract.__SPVContractMock_init(genesisData.rawHeader);
+
+      const mainchainBlocks = getReorgBlockHeaderDataBatch(reorgBlocksDataFilePath, 1, 15);
+      const rawHeaders = mainchainBlocks.map((blockData) => blockData.rawHeader);
+
+      await spvContract.addBlockHeaderBatch(rawHeaders);
+
+      const altBlock = getReorgBlockHeaderData(reorgBlocksDataFilePath, 16, false);
+
+      let tx = await spvContract.addBlockHeader(altBlock.rawHeader);
+
+      let expectedCurrentBlockHeight = 16;
+
+      await expect(tx)
+        .to.emit(spvContract, "MainchainHeadUpdated")
+        .withArgs(expectedCurrentBlockHeight, altBlock.blockHash);
+      expect(await spvContract.getMainchainHead()).to.be.eq(altBlock.blockHash);
+
+      const newMainchainBlocks = getReorgBlockHeaderDataBatch(reorgBlocksDataFilePath, 16, 2);
+      const newRawHeaders = newMainchainBlocks.map((blockData) => blockData.rawHeader);
+
+      tx = await spvContract.addBlockHeaderBatch(newRawHeaders);
+
+      expectedCurrentBlockHeight = 17;
+      const expectedMainchainHead = newMainchainBlocks[1];
+
+      await expect(tx)
+        .to.emit(spvContract, "MainchainHeadUpdated")
+        .withArgs(expectedCurrentBlockHeight, expectedMainchainHead.blockHash);
+      expect(await spvContract.getMainchainHead()).to.be.eq(expectedMainchainHead.blockHash);
+      expect(await spvContract.isInMainchain(altBlock.blockHash)).to.be.false;
+    });
+
+    it("should correctly add alternative block without mainchain update", async () => {
+      const genesisData = getBlockHeaderData(regtestGenesisBlockDataFilePath, 0);
+
+      await spvContract.__SPVContractMock_init(genesisData.rawHeader);
+
+      const mainchainBlocks = getReorgBlockHeaderDataBatch(reorgBlocksDataFilePath, 1, 21);
+      const rawHeaders = mainchainBlocks.map((blockData) => blockData.rawHeader);
+
+      await spvContract.addBlockHeaderBatch(rawHeaders);
+
+      const altBlock = getReorgBlockHeaderData(reorgBlocksDataFilePath, 16, false);
+
+      const tx = await spvContract.addBlockHeader(altBlock.rawHeader);
+
+      await expect(tx).to.not.emit(spvContract, "MainchainHeadUpdated");
+
+      expect(await spvContract.isInMainchain(altBlock.blockHash)).to.be.false;
     });
 
     it("should get exception if pass block that already exists", async () => {
