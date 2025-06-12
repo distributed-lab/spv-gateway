@@ -210,6 +210,7 @@ describe("SPVContract", () => {
       const secondBlockData = getBlockHeaderData(firstBlocksDataFilePath, 2);
 
       expect((await spvContract.getBlockInfo(firstBlockData.blockHash)).isInMainchain).to.be.false;
+      expect(await spvContract.validateBlockHash(firstBlockData.blockHash)).to.be.deep.eq([false, 0n]);
 
       let tx = await spvContract.addBlockHeader(firstBlockData.rawHeader);
 
@@ -229,6 +230,7 @@ describe("SPVContract", () => {
       expect(await spvContract.getBlockMerkleRoot(expectedMainchainHead)).to.be.eq(
         firstBlockData.parsedBlockHeader.merkleroot,
       );
+      expect(await spvContract.validateBlockHash(firstBlockData.blockHash)).to.be.deep.eq([true, 0n]);
 
       let blockInfo = await spvContract.getBlockInfo(expectedMainchainHead);
 
@@ -255,6 +257,9 @@ describe("SPVContract", () => {
       expect(blockInfo.mainBlockData.blockHeight).to.be.eq(expectedMainchainBlockHeight);
       expect(blockInfo.isInMainchain).to.be.true;
       expect(blockInfo.cumulativeWork).to.be.eq(secondBlockData.parsedBlockHeader.chainwork);
+
+      expect(await spvContract.validateBlockHash(firstBlockData.blockHash)).to.be.deep.eq([true, 1n]);
+      expect(await spvContract.validateBlockHash(secondBlockData.blockHash)).to.be.deep.eq([true, 0n]);
     });
 
     it("should correctly add target adjustment block", async () => {
