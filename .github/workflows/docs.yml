@@ -1,0 +1,51 @@
+name: "docs"
+
+on:
+  push:
+    branches:
+      - main
+
+# Add permissions for GitHub Pages deployment
+permissions:
+  contents: read # Needed to checkout the repo
+  pages: write   # Needed to deploy to GitHub Pages
+  id-token: write # Needed for OIDC token authentication
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v4
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Generate Docs
+        run: |
+          npx hardhat markup --outdir docs/contracts
+          cp README.md docs/
+          npm install -g docsify-cli
+          docsify generate docs
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'docs'
+
+  deploy:
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: docs
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

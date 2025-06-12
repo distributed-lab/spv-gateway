@@ -87,6 +87,10 @@ const config: HardhatUserConfig = {
     alwaysGenerateOverloads: true,
     discriminateTypes: true,
   },
+  markup: {
+    onlyFiles: ["contracts/libs", "contracts/SPVContract.sol", "contracts/interfaces/ISPVContract.sol"],
+    outdir: "docs",
+  },
 };
 
 export default config;

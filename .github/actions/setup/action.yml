@@ -14,3 +14,7 @@ runs:
     - name: Install packages
       run: npm install
       shell: bash
+
+    - name: Compile
+      run: npm run compile
+      shell: bash
