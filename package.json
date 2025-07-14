@@ -27,7 +27,7 @@
     "deploy-sepolia": "npx hardhat migrate --network sepolia --verify",
     "generate-types": "TYPECHAIN_FORCE=true npx hardhat typechain && npx hardhat gobind",
     "generate-docs": "npx hardhat markup",
-    "solhint-check": "solhint \"./contracts/**/*.sol\"",
+    "solhint-check": "solhint --noPoster \"./contracts/**/*.sol\"",
     "lint-fix": "npm run lint-sol-fix && npm run lint-ts-fix && npm run lint-json-fix && npm run solhint-check",
     "lint-json-fix": "prettier --write \"./**/*.json\"",
     "lint-ts-fix": "prettier --write \"./**/*.ts\" --ignore-path .prettierignore",
@@ -37,8 +37,8 @@
   "dependencies": {
     "@openzeppelin/contracts": "5.2.0",
     "@openzeppelin/contracts-upgradeable": "5.2.0",
-    "@solarity/solidity-lib": "3.0.1",
-    "solady": "0.1.14"
+    "@solarity/solidity-lib": "3.1.1",
+    "solady": "0.1.23"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.0.8",
@@ -66,7 +66,7 @@
     "mocha": "^11.1.0",
     "prettier": "^3.5.0",
     "prettier-plugin-solidity": "^1.4.2",
-    "solhint": "^5.0.5",
+    "solhint": "^6.0.0",
     "solhint-plugin-prettier": "^0.1.0",
     "solidity-coverage": "^0.8.14",
     "ts-node": "^10.9.2",

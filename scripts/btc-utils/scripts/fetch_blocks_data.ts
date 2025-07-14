@@ -1,7 +1,7 @@
 import axios from "axios";
 import fsExtra from "fs-extra";
 
-import { BlockHeaderData, ParsedBlockHeaderData } from "../../helpers/types";
+import { BlockHeaderData, ParsedBlockHeaderData } from "../../../test/helpers/types";
 import path from "path";
 
 interface RpcRequest {

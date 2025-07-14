@@ -1,6 +1,7 @@
 import { BigNumberish } from "ethers";
 
 export type DeployConfig = {
-  pendingBlockCount: BigNumberish;
-  pendingTargetHeightCount: BigNumberish;
+  blockHeader: string;
+  blockHeight: BigNumberish;
+  cumulativeWork: BigNumberish;
 };

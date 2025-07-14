@@ -11,6 +11,7 @@
     "max-states-count": "warn",
     "not-rely-on-time": "off",
     "var-name-mixedcase": "off",
-    "compiler-version": "off"
+    "compiler-version": "off",
+    "use-natspec": "off"
   }
 }

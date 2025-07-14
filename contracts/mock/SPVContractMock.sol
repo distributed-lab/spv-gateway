@@ -32,7 +32,7 @@ contract SPVContractMock is SPVContract {
     ) external pure returns (uint32) {
         BlockHeaderData[] memory blockHeaders_ = new BlockHeaderData[](blockHeaderRawArr_.length);
 
-        for (uint256 i = 0; i < blockHeaderRawArr_.length; i++) {
+        for (uint256 i = 0; i < blockHeaderRawArr_.length; ++i) {
             (blockHeaders_[i], ) = blockHeaderRawArr_[i].parseBlockHeaderData();
         }
 
