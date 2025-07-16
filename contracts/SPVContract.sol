@@ -62,7 +62,7 @@ contract SPVContract is ISPVContract, Initializable {
         );
 
         require(
-            TargetsHelper.isTargetAdjustmentBlock(blockHeight_),
+            blockHeight_ == 0 || TargetsHelper.isTargetAdjustmentBlock(blockHeight_),
             InvalidInitialBlockHeight(blockHeight_)
         );
 
@@ -92,7 +92,7 @@ contract SPVContract is ISPVContract, Initializable {
         uint256 firstBlockHeight_ = getBlockHeight(blockHeaders_[0].prevBlockHash) + 1;
         bytes32 currentTarget_ = getBlockTarget(blockHeaders_[0].prevBlockHash);
 
-        for (uint256 i = 0; i < blockHeaderRawArray_.length; i++) {
+        for (uint256 i = 0; i < blockHeaderRawArray_.length; ++i) {
             uint256 currentBlockHeight_ = firstBlockHeight_ + i;
 
             currentTarget_ = _updateLastEpochCumulativeWork(currentTarget_, currentBlockHeight_);
@@ -260,7 +260,7 @@ contract SPVContract is ISPVContract, Initializable {
                 $.blocksHeightToBlockHash[prevBlockHeight_] = prevBlockHash_;
 
                 prevBlockHash_ = _getBlockHeader(prevBlockHash_).prevBlockHash;
-                prevBlockHeight_ -= 1;
+                --prevBlockHeight_;
             } while (getBlockHash(prevBlockHeight_) != prevBlockHash_ && prevBlockHash_ != 0);
         }
     }
@@ -298,7 +298,7 @@ contract SPVContract is ISPVContract, Initializable {
         blockHeaders_ = new BlockHeaderData[](blockHeaderRawArray_.length);
         blockHashes_ = new bytes32[](blockHeaderRawArray_.length);
 
-        for (uint256 i = 0; i < blockHeaderRawArray_.length; i++) {
+        for (uint256 i = 0; i < blockHeaderRawArray_.length; ++i) {
             (blockHeaders_[i], blockHashes_[i]) = _parseBlockHeaderRaw(blockHeaderRawArray_[i]);
 
             if (i == 0) {

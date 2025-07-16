@@ -9,7 +9,11 @@ export = async (deployer: Deployer) => {
 
   const spvContract = await deployer.deploy(SPVContract__factory);
 
-  await spvContract.__SPVContract_init(config.pendingBlockCount, config.pendingTargetHeightCount);
+  await spvContract["__SPVContract_init(bytes,uint256,uint256)"](
+    config.blockHeader,
+    config.blockHeight,
+    config.cumulativeWork,
+  );
 
   Reporter.reportContracts(["SPVContract", await spvContract.getAddress()]);
 };

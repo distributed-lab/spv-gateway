@@ -50,6 +50,17 @@ describe("SPVContract", () => {
       await expect(tx).to.emit(spvContract, "BlockHeaderAdded").withArgs(genesisData.height, genesisData.blockHash);
     });
 
+    it("should correctly init SPV contract from genesis state passed outside", async () => {
+      const initBlockData = getBlockHeaderData(genesisBlockDataFilePath, 0);
+
+      const tx = await spvContract["__SPVContract_init(bytes,uint256,uint256)"](initBlockData.rawHeader, 0, 0);
+
+      await expect(tx)
+        .to.emit(spvContract, "MainchainHeadUpdated")
+        .withArgs(initBlockData.height, initBlockData.blockHash);
+      await expect(tx).to.emit(spvContract, "BlockHeaderAdded").withArgs(initBlockData.height, initBlockData.blockHash);
+    });
+
     it("should correctly init SPV contract from some block", async () => {
       const initBlockHeight = 802_368;
 
