@@ -4,9 +4,11 @@ pragma solidity ^0.8.28;
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 import {LibSort} from "solady/src/utils/LibSort.sol";
+import {LibBit} from "solady/src/utils/LibBit.sol";
 
 import {BlockHeader, BlockHeaderData} from "./libs/BlockHeader.sol";
 import {TargetsHelper} from "./libs/TargetsHelper.sol";
+import {TxMerkleProof} from "./libs/TxMerkleProof.sol";
 
 import {ISPVContract} from "./interfaces/ISPVContract.sol";
 
@@ -149,8 +151,17 @@ contract SPVContract is ISPVContract, Initializable {
     }
 
     /// @inheritdoc ISPVContract
-    function getBlockMerkleRoot(bytes32 blockHash_) external view returns (bytes32) {
-        return _getBlockHeader(blockHash_).merkleRoot;
+    function verifyTx(
+        bytes32 blockHash_,
+        bytes32 txid_,
+        bytes32[] calldata merkleProof_,
+        bytes calldata directions_
+    ) external view returns (bool) {
+        bytes32 blockMerkleRoot_ = getBlockMerkleRoot(blockHash_);
+
+        bytes32 reversedRoot_ = bytes32(LibBit.reverseBytes(uint256(blockMerkleRoot_)));
+
+        return TxMerkleProof.verify(merkleProof_, directions_, reversedRoot_, txid_);
     }
 
     /// @inheritdoc ISPVContract
@@ -171,6 +182,11 @@ contract SPVContract is ISPVContract, Initializable {
     /// @inheritdoc ISPVContract
     function getLastEpochCumulativeWork() external view returns (uint256) {
         return _getSPVContractStorage().lastEpochCumulativeWork;
+    }
+
+    /// @inheritdoc ISPVContract
+    function getBlockMerkleRoot(bytes32 blockHash_) public view returns (bytes32) {
+        return _getBlockHeader(blockHash_).merkleRoot;
     }
 
     /// @inheritdoc ISPVContract
