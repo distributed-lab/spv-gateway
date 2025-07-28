@@ -6,8 +6,19 @@ pragma solidity ^0.8.28;
  * Provides functions for processing and verifying Merkle tree proofs
  */
 library TxMerkleProof {
+    /**
+     * @notice Emitted when the proof and directions array are of different length.
+     * This error ensures that only correctly sized proofs are processed
+     */
     error InvalidLengths();
 
+    /**
+     * @notice Returns true if `leaf_` can be proven to be part of a Merkle tree
+     * defined by `root_`. Requires a `proof_` containing the sibling hashes along
+     * the path from the leaf to the root. Each byte of `directions_` indicates
+     * the hashing order for each pair.
+     * Uses double SHA-256 hashing.
+     */
     function verify(
         bytes32[] memory proof_,
         bytes calldata directions_,
@@ -19,6 +30,13 @@ library TxMerkleProof {
         return processProof(proof_, directions_, leaf_) == root_;
     }
 
+    /**
+     * @notice Returns the rebuilt hash obtained by traversing the Merkle tree
+     * from `leaf_` using `proof_`. A `proof_` is valid if and only if the rebuilt
+     * hash matches the given tree root. The pre-images are hashed in the order
+     * specified by the `directions_` bytes.
+     * Uses double SHA-256 hashing.
+     */
     function processProof(
         bytes32[] memory proof_,
         bytes calldata directions_,
