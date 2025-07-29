@@ -463,9 +463,18 @@ describe("SPVContract", () => {
       it("should correctly return false when the proof is empty", async () => {
         const neededBlockData = getBlockHeaderData(firstBlocksDataFilePath, 1);
         const txid = "0x0e3e2357e806b6cdb1f70b54c3a3a17b6714ee1f0e68bebb44a74b1efd512098";
-        const merkleProof: string[] = [];
 
-        expect(await spvContract.verifyTx(neededBlockData.blockHash, txid, merkleProof, [])).to.be.false;
+        expect(await spvContract.verifyTx(neededBlockData.blockHash, txid, [], [])).to.be.false;
+      });
+
+      it("should revert if proof and directions have different lengths", async () => {
+        const neededBlockData = getBlockHeaderData(firstBlocksDataFilePath, 1);
+        const txid = "0x0e3e2357e806b6cdb1f70b54c3a3a17b6714ee1f0e68bebb44a74b1efd512098";
+
+        await expect(spvContract.verifyTx(neededBlockData.blockHash, txid, [], [1])).to.be.revertedWithCustomError(
+          spvContract,
+          "InvalidLengths",
+        );
       });
 
       it("should correctly return false when the txid is invalid", async () => {
