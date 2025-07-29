@@ -1,47 +1,143 @@
 import { ZeroHash } from "ethers";
 
-let hashes: string[];
-let flagPath: string;
-let maxDepth: number;
-let nodeCountPerLevel: number[];
+export class MerkleRawProofParser {
+  private txidReversed: string;
+  private txCountInBlock: number;
+  private hashes: string[];
+  private flagPath: string;
+  private maxDepth: number;
+  private nodeCountPerLevel: number[];
+  private txIndex: number;
+  private sortedHashes: string[];
+  private directions: number[];
 
-export function parseRawProof(txid: string, rawProof: string): [string, string[], string] {
-  const txidReversed = reverseBytes(txid);
-  const withoutHeader = rawProof.slice(160);
+  constructor(txid: string, rawProof: string) {
+    this.txidReversed = reverseBytes(txid);
 
-  const txCountOffset = 8;
-  let offset = txCountOffset;
+    const withoutHeader = rawProof.slice(160);
 
-  const txCountRaw = withoutHeader.slice(0, offset);
-  const txCountInBlock = parseInt(reverseBytes(txCountRaw), 16);
-  const [hashCount, hashCountSize] = parseCuint(withoutHeader, offset);
+    const txCountOffset = 8;
+    let offset = txCountOffset;
 
-  offset += hashCountSize;
+    const txCountRaw = withoutHeader.slice(0, offset);
+    this.txCountInBlock = parseInt(reverseBytes(txCountRaw), 16);
+    const [hashCount, hashCountSize] = parseCuint(withoutHeader, offset);
 
-  const rawHashes = withoutHeader.slice(offset, offset + hashCount * 64);
+    offset += hashCountSize;
 
-  hashes = [];
-  for (let i = 0; i < hashCount; i++) {
-    hashes.push("0x" + rawHashes.slice(i * 64, (i + 1) * 64));
+    const rawHashes = withoutHeader.slice(offset, offset + hashCount * 64);
+
+    this.hashes = [];
+    for (let i = 0; i < hashCount; i++) {
+      this.hashes.push("0x" + rawHashes.slice(i * 64, (i + 1) * 64));
+    }
+
+    offset = offset + hashCount * 64;
+
+    const [byteFlagsCount, byteFlagsCountSize] = parseCuint(withoutHeader, offset);
+
+    offset += byteFlagsCountSize;
+
+    const byteFlags = withoutHeader.slice(offset, offset + 2 * byteFlagsCount);
+
+    this.flagPath = processFlags(byteFlags);
+    this.maxDepth = Math.ceil(Math.log2(this.txCountInBlock));
+    this.nodeCountPerLevel = getNodeCountPerLevel(this.txCountInBlock, this.maxDepth);
+
+    [this.txIndex, this.sortedHashes] = this.processTree(0, 0, 0, 0, 0, []);
+
+    this.directions = processDirections(this.txIndex, this.txCountInBlock);
   }
 
-  offset = offset + hashCount * 64;
+  getTxidReversed(): string {
+    return this.txidReversed;
+  }
 
-  const [byteFlagsCount, byteFlagsCountSize] = parseCuint(withoutHeader, offset);
+  getTxIndex(): number {
+    return this.txIndex;
+  }
 
-  offset += byteFlagsCountSize;
+  getSortedHashes(): string[] {
+    return this.sortedHashes;
+  }
 
-  const byteFlags = withoutHeader.slice(offset, offset + 2 * byteFlagsCount);
+  getDirections(): number[] {
+    return this.directions;
+  }
 
-  flagPath = processFlags(byteFlags);
-  maxDepth = Math.ceil(Math.log2(txCountInBlock));
-  nodeCountPerLevel = getNodeCountPerLevel(txCountInBlock, maxDepth);
+  processTree(
+    depth: number,
+    currentFlag: number,
+    txIndex: number,
+    currentHash: number,
+    nodePosition: number,
+    sortedHashes: string[],
+  ): [number, string[]] {
+    if (depth == this.maxDepth && this.flagPath.at(currentFlag) == "1") {
+      //this is the tx we searched for
+      ++currentHash;
 
-  const [txIndex, sortedHashes] = processTree(0, 0, 0, 0, 0, []);
+      if (this.isNodeWithoutPair(depth, nodePosition)) {
+        sortedHashes.push(ZeroHash);
+      } else if (this.isLastLeaf(nodePosition, currentHash)) {
+        sortedHashes.push(this.hashes[currentHash]);
+      }
 
-  let directions = getDirections(txIndex, txCountInBlock);
+      sortedHashes.reverse();
 
-  return [txidReversed, sortedHashes, directions];
+      return [txIndex, sortedHashes];
+    }
+
+    if (depth == this.maxDepth) {
+      //this is neighbour of the tx we searched for
+      sortedHashes.push(this.hashes[currentHash]);
+
+      return this.processTree(depth, currentFlag + 1, txIndex + 1, currentHash + 1, nodePosition + 1, sortedHashes);
+    }
+
+    if (this.flagPath.at(currentFlag) == "1") {
+      if (this.isNodeWithoutPair(depth, nodePosition)) {
+        sortedHashes.push(ZeroHash);
+      } else if (this.isLeftNode(depth, nodePosition)) {
+        const rightNodeHash = this.hashes.pop();
+
+        if (!rightNodeHash) throw Error(`No hashes left at depth ${depth}`);
+
+        sortedHashes.push(rightNodeHash);
+      }
+
+      return this.processTree(depth + 1, currentFlag + 1, txIndex, currentHash, nodePosition * 2, sortedHashes);
+    }
+
+    const txSkipped = 2 ** (this.maxDepth - depth);
+
+    sortedHashes.push(this.hashes[currentHash]);
+
+    return this.processTree(
+      depth,
+      currentFlag + 1,
+      txIndex + txSkipped,
+      currentHash + 1,
+      nodePosition + 1,
+      sortedHashes,
+    );
+  }
+
+  nodesCountIsUneven(level: number): boolean {
+    return this.nodeCountPerLevel[level]! % 2 == 1;
+  }
+
+  isNodeWithoutPair(depth: number, nodePosition: number): boolean {
+    return depth != 0 && this.nodesCountIsUneven(depth) && nodePosition + 1 == this.nodeCountPerLevel[depth];
+  }
+
+  isLeftNode(depth: number, nodePosition: number): boolean {
+    return depth != 0 && nodePosition % 2 == 0;
+  }
+
+  isLastLeaf(nodePosition: number, currentHash: number): boolean {
+    return nodePosition % 2 == 0 && currentHash < this.hashes.length;
+  }
 }
 
 function reverseBytes(str: string) {
@@ -89,83 +185,16 @@ function getNodeCountPerLevel(txCount: number, depth: number): number[] {
   return result;
 }
 
-function processTree(
-  depth: number,
-  currentFlag: number,
-  txIndex: number,
-  currentHash: number,
-  nodePosition: number,
-  sortedHashes: string[],
-): [number, string[]] {
-  if (depth == maxDepth && flagPath.at(currentFlag) == "1") {
-    //this is the tx we searched for
-    ++currentHash;
-
-    if (isNodeWithoutPair(depth, nodePosition)) {
-      sortedHashes.push(ZeroHash);
-    } else if (isLastLeaf(nodePosition, currentHash)) {
-      sortedHashes.push(hashes[currentHash]);
-    }
-
-    sortedHashes.reverse();
-
-    return [txIndex, sortedHashes];
-  }
-
-  if (depth == maxDepth) {
-    //this is neighbour of the tx we searched for
-    sortedHashes.push(hashes[currentHash]);
-
-    return processTree(depth, currentFlag + 1, txIndex + 1, currentHash + 1, nodePosition + 1, sortedHashes);
-  }
-
-  if (flagPath.at(currentFlag) == "1") {
-    if (isNodeWithoutPair(depth, nodePosition)) {
-      sortedHashes.push(ZeroHash);
-    } else if (isLeftNode(depth, nodePosition)) {
-      const rightNodeHash = hashes.pop();
-
-      if (!rightNodeHash) throw Error(`No hashes left at depth ${depth}`);
-
-      sortedHashes.push(rightNodeHash);
-    }
-
-    return processTree(depth + 1, currentFlag + 1, txIndex, currentHash, nodePosition * 2, sortedHashes);
-  }
-
-  const txSkipped = 2 ** (maxDepth - depth);
-
-  sortedHashes.push(hashes[currentHash]);
-
-  return processTree(depth, currentFlag + 1, txIndex + txSkipped, currentHash + 1, nodePosition + 1, sortedHashes);
-}
-
-function nodesCountIsUneven(level: number): boolean {
-  return nodeCountPerLevel[level]! % 2 == 1;
-}
-
-function isNodeWithoutPair(depth: number, nodePosition: number): boolean {
-  return depth != 0 && nodesCountIsUneven(depth) && nodePosition + 1 == nodeCountPerLevel[depth];
-}
-
-function isLeftNode(depth: number, nodePosition: number): boolean {
-  return depth != 0 && nodePosition % 2 == 0;
-}
-
-function isLastLeaf(nodePosition: number, currentHash: number): boolean {
-  return nodePosition % 2 == 0 && currentHash < hashes.length;
-}
-
-function getDirections(txIndex: number, totalTransactions: number) {
-  let directions: string = "0x";
+function processDirections(txIndex: number, totalTransactions: number) {
+  let directions: number[] = [];
   let curIndex = txIndex;
   let levelSize = totalTransactions;
 
   while (levelSize > 1) {
     if (curIndex % 2 == 0) {
-      if (levelSize % 2 == 1 && levelSize - 1 == curIndex) directions += "02";
-      else directions += "00";
-    } else directions += "01";
+      if (levelSize % 2 == 1 && levelSize - 1 == curIndex) directions.push(2);
+      else directions.push(0);
+    } else directions.push(1);
 
     curIndex = Math.floor(curIndex / 2);
     levelSize = Math.ceil(levelSize / 2);

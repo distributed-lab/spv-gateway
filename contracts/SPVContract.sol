@@ -155,7 +155,7 @@ contract SPVContract is ISPVContract, Initializable {
         bytes32 blockHash_,
         bytes32 txid_,
         bytes32[] calldata merkleProof_,
-        bytes calldata directions_
+        TxMerkleProof.HashDirection[] calldata directions_
     ) external view returns (bool) {
         bytes32 blockMerkleRoot_ = getBlockMerkleRoot(blockHash_);
 

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.28;
 
 import {BlockHeaderData} from "../libs/BlockHeader.sol";
+import {TxMerkleProof} from "../libs/TxMerkleProof.sol";
 
 /**
  * @notice Interface for an SPV (Simplified Payment Verification) contract.
@@ -125,13 +126,13 @@ interface ISPVContract {
      * @param blockHash_ The hash of the block in which to verify the transaction
      * @param txid_ The transaction id to verify
      * @param merkleProof_ The array of hashes used to build the Merkle root
-     * @param directions_ The string indicating the hashing directions for the Merkle proof
+     * @param directions_ The array indicating the hashing directions for the Merkle proof
      */
     function verifyTx(
         bytes32 blockHash_,
         bytes32 txid_,
         bytes32[] memory merkleProof_,
-        bytes calldata directions_
+        TxMerkleProof.HashDirection[] calldata directions_
     ) external view returns (bool);
 
     /**
