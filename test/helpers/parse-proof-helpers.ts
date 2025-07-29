@@ -40,13 +40,13 @@ export class MerkleRawProofParser {
 
     const byteFlags = withoutHeader.slice(offset, offset + 2 * byteFlagsCount);
 
-    this.flagPath = processFlags(byteFlags);
+    this.flagPath = this.processFlags(byteFlags);
     this.maxDepth = Math.ceil(Math.log2(this.txCountInBlock));
-    this.nodeCountPerLevel = getNodeCountPerLevel(this.txCountInBlock, this.maxDepth);
+    this.nodeCountPerLevel = this.getNodeCountPerLevel(this.txCountInBlock, this.maxDepth);
 
     [this.txIndex, this.sortedHashes] = this.processTree(0, 0, 0, 0, 0, []);
 
-    this.directions = processDirections(this.txIndex, this.txCountInBlock);
+    this.directions = this.processDirections(this.txIndex, this.txCountInBlock);
   }
 
   getTxidReversed(): string {
@@ -65,7 +65,49 @@ export class MerkleRawProofParser {
     return this.directions;
   }
 
-  processTree(
+  private processFlags(flagBytes: string): string {
+    let directions = "";
+
+    for (let i = 0; i < flagBytes.length; i += 2) {
+      directions += reverseByte(flagBytes.substring(i, i + 2));
+    }
+
+    return directions;
+  }
+
+  private getNodeCountPerLevel(txCount: number, depth: number): number[] {
+    let result: number[] = [];
+    let levelSize = txCount;
+
+    for (let i = depth; i >= 0; i--) {
+      result[depth] = levelSize;
+
+      levelSize = Math.ceil(levelSize / 2);
+      depth--;
+    }
+
+    return result;
+  }
+
+  private processDirections(txIndex: number, totalTransactions: number) {
+    let directions: number[] = [];
+    let curIndex = txIndex;
+    let levelSize = totalTransactions;
+
+    while (levelSize > 1) {
+      if (curIndex % 2 == 0) {
+        if (levelSize % 2 == 1 && levelSize - 1 == curIndex) directions.push(2);
+        else directions.push(0);
+      } else directions.push(1);
+
+      curIndex = Math.floor(curIndex / 2);
+      levelSize = Math.ceil(levelSize / 2);
+    }
+
+    return directions;
+  }
+
+  private processTree(
     depth: number,
     currentFlag: number,
     txIndex: number,
@@ -123,19 +165,19 @@ export class MerkleRawProofParser {
     );
   }
 
-  nodesCountIsUneven(level: number): boolean {
+  private nodesCountIsUneven(level: number): boolean {
     return this.nodeCountPerLevel[level]! % 2 == 1;
   }
 
-  isNodeWithoutPair(depth: number, nodePosition: number): boolean {
+  private isNodeWithoutPair(depth: number, nodePosition: number): boolean {
     return depth != 0 && this.nodesCountIsUneven(depth) && nodePosition + 1 == this.nodeCountPerLevel[depth];
   }
 
-  isLeftNode(depth: number, nodePosition: number): boolean {
+  private isLeftNode(depth: number, nodePosition: number): boolean {
     return depth != 0 && nodePosition % 2 == 0;
   }
 
-  isLastLeaf(nodePosition: number, currentHash: number): boolean {
+  private isLastLeaf(nodePosition: number, currentHash: number): boolean {
     return nodePosition % 2 == 0 && currentHash < this.hashes.length;
   }
 }
@@ -146,6 +188,12 @@ function reverseBytes(str: string) {
   return "0x" + Buffer.from(str, "hex").reverse().toString("hex");
 }
 
+function reverseByte(byte: string): string {
+  const binary = parseInt(byte, 16).toString(2);
+  const padded = binary.padStart(8, "0");
+  return padded.split("").reverse().join("");
+}
+
 function parseCuint(data: string, offset: number): [number, number] {
   const firstByte = parseInt(data.slice(offset, offset + 2), 16);
 
@@ -153,52 +201,4 @@ function parseCuint(data: string, offset: number): [number, number] {
   if (firstByte == 0xfd) return [parseInt(data.slice(offset + 2, offset + 6), 16), 6];
   if (firstByte == 0xfe) return [parseInt(data.slice(offset + 2, offset + 10), 16), 10];
   return [parseInt(data.slice(offset + 2, offset + 18), 16), 18];
-}
-
-function processFlags(flagBytes: string): string {
-  let directions = "";
-
-  for (let i = 0; i < flagBytes.length; i += 2) {
-    directions += reverseByte(flagBytes.substring(i, i + 2));
-  }
-
-  return directions;
-}
-
-function reverseByte(byte: string): string {
-  const binary = parseInt(byte, 16).toString(2);
-  const padded = binary.padStart(8, "0");
-  return padded.split("").reverse().join("");
-}
-
-function getNodeCountPerLevel(txCount: number, depth: number): number[] {
-  let result: number[] = [];
-  let levelSize = txCount;
-
-  for (let i = depth; i >= 0; i--) {
-    result[depth] = levelSize;
-
-    levelSize = Math.ceil(levelSize / 2);
-    depth--;
-  }
-
-  return result;
-}
-
-function processDirections(txIndex: number, totalTransactions: number) {
-  let directions: number[] = [];
-  let curIndex = txIndex;
-  let levelSize = totalTransactions;
-
-  while (levelSize > 1) {
-    if (curIndex % 2 == 0) {
-      if (levelSize % 2 == 1 && levelSize - 1 == curIndex) directions.push(2);
-      else directions.push(0);
-    } else directions.push(1);
-
-    curIndex = Math.floor(curIndex / 2);
-    levelSize = Math.ceil(levelSize / 2);
-  }
-
-  return directions;
 }
