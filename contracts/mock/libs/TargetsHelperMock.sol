@@ -79,8 +79,59 @@ contract TargetsHelperMock {
         return bits_.bitsToTarget();
     }
 
+    // Reference implementation for bitsToTarget
+    // Based on Bitcoin documentation: https://learnmeabitcoin.com/technical/block/bits/
+    function bitsToTargetReference(bytes4 bits_) external pure returns (bytes32) {
+        uint256 exponent_ = uint256(uint32(bits_)) >> 24;
+        uint256 coefficient_ = uint256(uint32(bits_)) & 0xFFFFFF;
+
+        if (exponent_ <= 3) {
+            return bytes32(coefficient_ >> (8 * (3 - exponent_)));
+        } else {
+            return bytes32(coefficient_ << (8 * (exponent_ - 3)));
+        }
+    }
+
     function targetToBits(bytes32 target_) external pure returns (bytes4) {
         return target_.targetToBits();
+    }
+
+    // Reference implementation for targetToBits
+    // Based on Bitcoin documentation: https://learnmeabitcoin.com/technical/block/bits/
+    function targetToBitsReference(bytes32 target_) external pure returns (bytes4) {
+        if (target_ == 0) {
+            return bytes4(0);
+        }
+
+        uint256 targetValue_ = uint256(target_);
+
+        // Find the most significant byte position
+        uint256 byteLength_ = 0;
+        uint256 temp = targetValue_;
+        while (temp > 0) {
+            byteLength_++;
+            temp >>= 8;
+        }
+
+        // Extract coefficient (3 bytes)
+        uint256 coefficient_;
+        uint256 exponent_ = byteLength_;
+
+        if (byteLength_ <= 3) {
+            coefficient_ = targetValue_ << (8 * (3 - byteLength_));
+            exponent_ = 3;
+        } else {
+            coefficient_ = targetValue_ >> (8 * (byteLength_ - 3));
+
+            // If the coefficient's most significant bit is set, we need to add padding
+            if (coefficient_ & 0x800000 != 0) {
+                coefficient_ >>= 8;
+                exponent_++;
+            }
+        }
+
+        // Combine exponent and coefficient into bits format
+        return bytes4((uint32(exponent_) << 24) | (uint32(coefficient_) & 0xFFFFFF));
     }
 
     function roundTarget(bytes32 currentTarget_) external pure returns (bytes32) {

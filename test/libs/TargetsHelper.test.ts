@@ -34,6 +34,34 @@ describe("TargetsHelper", () => {
   afterEach(reverter.revert);
 
   describe("#countNewTarget", () => {
+    // # bits
+    // exponent = 0x17
+    // coefficient = 0x05dd01
+
+    // # target
+    // target = coefficient * 2**(8 * (exponent - 3))
+    // # 2**            = using a power of two for bit-shifting
+    // # (8 *           = there are 8 bits in a byte
+    // # (exponent - 3) = leave space for the coefficient to fill
+
+    // # target (hex)
+    // target_hex = target.to_s(16)
+
+    // puts target_hex #=> 5dd010000000000000000000000000000000000000000
+    it.only("example", async () => {
+      // const bits = "0x1705dd01";
+      // const target = await targetsHelperLib.bitsToTarget(bits);
+      // const refTarget = await targetsHelperLib.bitsToTargetReference(bits);
+      // console.log(target.toString());
+      // console.log(refTarget.toString());
+
+      const newV = "0x0000000000000000000000000000000000000000000000000000000000000001";
+      console.log(await targetsHelperLib.targetToBits(newV));
+      console.log(await targetsHelperLib.targetToBitsReference(newV));
+
+      // expect(target).to.be.eq("0x00000000000000000005dd010000000000000000000000000000000000000000");
+    });
+
     it("should correctly count new target for the first epochs", async () => {
       const firstEpochBlockData = getBlockHeaderData(firstBlocksDataFilePath, 1);
       const lastEpochBlockData = getBlockHeaderData(firstBlocksDataFilePath, DIFFICULTY_ADJUSTMENT_INTERVAL);

@@ -162,6 +162,12 @@ library TargetsHelper {
             let coefficientStartIndex := 0
 
             let bitsPtr := mload(0x40)
+
+            if iszero(target_) {
+                mstore8(bitsPtr, 0x0)
+                return(bitsPtr, 0x20)
+            }
+
             mstore(0x40, add(bitsPtr, 0x4))
 
             for {
