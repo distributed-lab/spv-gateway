@@ -14,3 +14,4 @@ generated-types
 
 # Hardhat migrate
 .storage.json
+.certora_internal
