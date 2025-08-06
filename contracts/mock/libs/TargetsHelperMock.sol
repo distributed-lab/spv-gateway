@@ -8,14 +8,14 @@ contract TargetsHelperMock {
 
     function countNewRoundedTarget(
         bytes32 currentTarget_,
-        uint256 actualPassedTime_
+        uint32 actualPassedTime_
     ) external pure returns (bytes32) {
         return currentTarget_.countNewRoundedTarget(actualPassedTime_);
     }
 
     function countNewTarget(
         bytes32 currentTarget_,
-        uint256 actualPassedTime_
+        uint32 actualPassedTime_
     ) external pure returns (bytes32) {
         return currentTarget_.countNewTarget(actualPassedTime_);
     }
