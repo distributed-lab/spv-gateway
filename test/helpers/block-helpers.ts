@@ -3,7 +3,7 @@ import path from "path";
 import { expect } from "chai";
 import { randomInt } from "crypto";
 
-import { BlockHeaderDataStructOutput } from "@/generated-types/ethers/contracts/mock/libs/BlockHeaderMock";
+import { ISPVContract } from "@/generated-types/ethers/contracts/SPVContract";
 
 import { BlockHeaderData, ReorgBlocksData } from "./types";
 
@@ -77,7 +77,7 @@ export function getBlockHeaderDataBatch(pathToDataFile: string, height: number, 
 }
 
 export function checkBlockHeaderData(
-  actualBlockHeaderData: BlockHeaderDataStructOutput,
+  actualBlockHeaderData: ISPVContract.BlockDataStructOutput,
   expectedBlockHeaderData: BlockHeaderData,
 ) {
   expect(actualBlockHeaderData.version).to.be.eq(expectedBlockHeaderData.parsedBlockHeader.version);

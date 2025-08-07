@@ -54,7 +54,7 @@ describe("SPVContract", () => {
     it("should correctly init SPV contract from genesis state passed outside", async () => {
       const initBlockData = getBlockHeaderData(genesisBlockDataFilePath, 0);
 
-      const tx = await spvContract["__SPVContract_init(bytes,uint256,uint256)"](initBlockData.rawHeader, 0, 0);
+      const tx = await spvContract["__SPVContract_init(bytes,uint64,uint256)"](initBlockData.rawHeader, 0, 0);
 
       await expect(tx)
         .to.emit(spvContract, "MainchainHeadUpdated")
@@ -69,7 +69,7 @@ describe("SPVContract", () => {
         .parsedBlockHeader.chainwork;
       const initBlockData = getBlockHeaderData(newestBlocksDataFilePath, initBlockHeight);
 
-      const tx = await spvContract["__SPVContract_init(bytes,uint256,uint256)"](
+      const tx = await spvContract["__SPVContract_init(bytes,uint64,uint256)"](
         initBlockData.rawHeader,
         initBlockData.height,
         lastEpochCumulativeWork,
@@ -82,7 +82,7 @@ describe("SPVContract", () => {
 
       expect(await spvContract.getLastEpochCumulativeWork()).to.be.eq(lastEpochCumulativeWork);
       expect(await spvContract.getMainchainHead()).to.be.eq(initBlockData.blockHash);
-      expect(await spvContract.getMainchainBlockHeight()).to.be.eq(initBlockData.height);
+      expect(await spvContract.getMainchainHeight()).to.be.eq(initBlockData.height);
     });
 
     it("should get exception if pass invalid block height", async () => {
@@ -93,7 +93,7 @@ describe("SPVContract", () => {
       const initBlockData = getBlockHeaderData(newestBlocksDataFilePath, initBlockHeight);
 
       await expect(
-        spvContract["__SPVContract_init(bytes,uint256,uint256)"](
+        spvContract["__SPVContract_init(bytes,uint64,uint256)"](
           initBlockData.rawHeader,
           initBlockData.height,
           lastEpochCumulativeWork,
@@ -117,7 +117,7 @@ describe("SPVContract", () => {
       const initBlockData = getBlockHeaderData(newestBlocksDataFilePath, initBlockHeight);
 
       await expect(
-        spvContract["__SPVContract_init(bytes,uint256,uint256)"](
+        spvContract["__SPVContract_init(bytes,uint64,uint256)"](
           initBlockData.rawHeader,
           initBlockData.height,
           lastEpochCumulativeWork,
@@ -134,14 +134,14 @@ describe("SPVContract", () => {
         .parsedBlockHeader.chainwork;
       const initBlockData = getBlockHeaderData(newestBlocksDataFilePath, initBlockHeight);
 
-      await spvContract["__SPVContract_init(bytes,uint256,uint256)"](
+      await spvContract["__SPVContract_init(bytes,uint64,uint256)"](
         initBlockData.rawHeader,
         initBlockData.height,
         lastEpochCumulativeWork,
       );
 
-      const batchSize = 200;
-      const batchesCount = 11;
+      const batchSize = 100;
+      const batchesCount = 22;
       const totalBlockToAdd = batchSize * batchesCount;
       const blocksData = getBlockHeaderDataBatch(newestBlocksDataFilePath, initBlockHeight + 1, totalBlockToAdd);
 
@@ -164,7 +164,7 @@ describe("SPVContract", () => {
         blocksData[DIFFICULTY_ADJUSTMENT_INTERVAL - 2].parsedBlockHeader.chainwork,
       );
       expect(await spvContract.getMainchainHead()).to.be.eq(blocksData[totalBlockToAdd - 1].blockHash);
-      expect(await spvContract.getMainchainBlockHeight()).to.be.eq(initBlockHeight + totalBlockToAdd);
+      expect(await spvContract.getMainchainHeight()).to.be.eq(initBlockHeight + totalBlockToAdd);
 
       await Promise.all(
         blocksData.map((data) => {
@@ -214,7 +214,7 @@ describe("SPVContract", () => {
     });
   });
 
-  describe("#verifyTX", () => {
+  describe("#checkTxInclusion", () => {
     describe("#when there are from 1 to 6 transactions in a block", () => {
       beforeEach(async () => {
         await spvContract["__SPVContract_init()"]();
@@ -245,12 +245,8 @@ describe("SPVContract", () => {
 
         const parser = new MerkleRawProofParser(txid, rawProof);
 
-        const txidReversed = parser.getTxidReversed();
-        const merkleProof = parser.getSortedHashes();
-        const directions = parser.getDirections();
-
         expect(
-          await spvContract.verifyTx(
+          await spvContract.checkTxInclusion(
             neededBlockData.blockHash,
             parser.getTxidReversed(),
             parser.getSortedHashes(),
@@ -268,7 +264,7 @@ describe("SPVContract", () => {
         const parser = new MerkleRawProofParser(txid, rawProof);
 
         expect(
-          await spvContract.verifyTx(
+          await spvContract.checkTxInclusion(
             neededBlockData.blockHash,
             parser.getTxidReversed(),
             parser.getSortedHashes(),
@@ -287,7 +283,7 @@ describe("SPVContract", () => {
         const parser = new MerkleRawProofParser(txid, rawProof);
 
         expect(
-          await spvContract.verifyTx(
+          await spvContract.checkTxInclusion(
             neededBlockData.blockHash,
             parser.getTxidReversed(),
             parser.getSortedHashes(),
@@ -306,7 +302,7 @@ describe("SPVContract", () => {
         const parser = new MerkleRawProofParser(txid, rawProof);
 
         expect(
-          await spvContract.verifyTx(
+          await spvContract.checkTxInclusion(
             neededBlockData.blockHash,
             parser.getTxidReversed(),
             parser.getSortedHashes(),
@@ -325,7 +321,7 @@ describe("SPVContract", () => {
         const parser = new MerkleRawProofParser(txid, rawProof);
 
         expect(
-          await spvContract.verifyTx(
+          await spvContract.checkTxInclusion(
             neededBlockData.blockHash,
             parser.getTxidReversed(),
             parser.getSortedHashes(),
@@ -344,7 +340,7 @@ describe("SPVContract", () => {
         const parser = new MerkleRawProofParser(txid, rawProof);
 
         expect(
-          await spvContract.verifyTx(
+          await spvContract.checkTxInclusion(
             neededBlockData.blockHash,
             parser.getTxidReversed(),
             parser.getSortedHashes(),
@@ -376,7 +372,7 @@ describe("SPVContract", () => {
         let parser = new MerkleRawProofParser(txid0, rawProof0);
 
         expect(
-          await spvContract.verifyTx(
+          await spvContract.checkTxInclusion(
             neededBlockData.blockHash,
             parser.getTxidReversed(),
             parser.getSortedHashes(),
@@ -391,7 +387,7 @@ describe("SPVContract", () => {
         parser = new MerkleRawProofParser(txid1, rawProof1);
 
         expect(
-          await spvContract.verifyTx(
+          await spvContract.checkTxInclusion(
             neededBlockData.blockHash,
             parser.getTxidReversed(),
             parser.getSortedHashes(),
@@ -406,7 +402,7 @@ describe("SPVContract", () => {
         parser = new MerkleRawProofParser(txid2, rawProof2);
 
         expect(
-          await spvContract.verifyTx(
+          await spvContract.checkTxInclusion(
             neededBlockData.blockHash,
             parser.getTxidReversed(),
             parser.getSortedHashes(),
@@ -421,7 +417,7 @@ describe("SPVContract", () => {
         parser = new MerkleRawProofParser(txid3, rawProof3);
 
         expect(
-          await spvContract.verifyTx(
+          await spvContract.checkTxInclusion(
             neededBlockData.blockHash,
             parser.getTxidReversed(),
             parser.getSortedHashes(),
@@ -436,7 +432,7 @@ describe("SPVContract", () => {
         parser = new MerkleRawProofParser(txid4, rawProof4);
 
         expect(
-          await spvContract.verifyTx(
+          await spvContract.checkTxInclusion(
             neededBlockData.blockHash,
             parser.getTxidReversed(),
             parser.getSortedHashes(),
@@ -451,7 +447,7 @@ describe("SPVContract", () => {
         parser = new MerkleRawProofParser(txid5, rawProof5);
 
         expect(
-          await spvContract.verifyTx(
+          await spvContract.checkTxInclusion(
             neededBlockData.blockHash,
             parser.getTxidReversed(),
             parser.getSortedHashes(),
@@ -464,17 +460,16 @@ describe("SPVContract", () => {
         const neededBlockData = getBlockHeaderData(firstBlocksDataFilePath, 1);
         const txid = "0x0e3e2357e806b6cdb1f70b54c3a3a17b6714ee1f0e68bebb44a74b1efd512098";
 
-        expect(await spvContract.verifyTx(neededBlockData.blockHash, txid, [], [])).to.be.false;
+        expect(await spvContract.checkTxInclusion(neededBlockData.blockHash, txid, [], [])).to.be.false;
       });
 
       it("should revert if proof and directions have different lengths", async () => {
         const neededBlockData = getBlockHeaderData(firstBlocksDataFilePath, 1);
         const txid = "0x0e3e2357e806b6cdb1f70b54c3a3a17b6714ee1f0e68bebb44a74b1efd512098";
 
-        await expect(spvContract.verifyTx(neededBlockData.blockHash, txid, [], [1])).to.be.revertedWithCustomError(
-          spvContract,
-          "InvalidLengths",
-        );
+        await expect(
+          spvContract.checkTxInclusion(neededBlockData.blockHash, txid, [], [1]),
+        ).to.be.revertedWithCustomError(spvContract, "InvalidLengths");
       });
 
       it("should correctly return false when the txid is invalid", async () => {
@@ -488,7 +483,7 @@ describe("SPVContract", () => {
         const wrongTxId = "0x0" + parser.getTxidReversed().slice(3);
 
         expect(
-          await spvContract.verifyTx(
+          await spvContract.checkTxInclusion(
             neededBlockData.blockHash,
             wrongTxId,
             parser.getSortedHashes(),
@@ -505,7 +500,7 @@ describe("SPVContract", () => {
         .parsedBlockHeader.chainwork;
       const initBlockData = getBlockHeaderData(newestBlocksDataFilePath, initBlockHeight);
 
-      await spvContract["__SPVContract_init(bytes,uint256,uint256)"](
+      await spvContract["__SPVContract_init(bytes,uint64,uint256)"](
         initBlockData.rawHeader,
         initBlockData.height,
         lastEpochCumulativeWork,
@@ -520,7 +515,7 @@ describe("SPVContract", () => {
       let parser = new MerkleRawProofParser(txid0, rawProof0);
 
       expect(
-        await spvContract.verifyTx(
+        await spvContract.checkTxInclusion(
           neededBlockData.blockHash,
           parser.getTxidReversed(),
           parser.getSortedHashes(),
@@ -535,7 +530,7 @@ describe("SPVContract", () => {
       parser = new MerkleRawProofParser(txid1, rawProof1);
 
       expect(
-        await spvContract.verifyTx(
+        await spvContract.checkTxInclusion(
           neededBlockData.blockHash,
           parser.getTxidReversed(),
           parser.getSortedHashes(),
@@ -550,7 +545,7 @@ describe("SPVContract", () => {
       parser = new MerkleRawProofParser(txid170, rawProof170);
 
       expect(
-        await spvContract.verifyTx(
+        await spvContract.checkTxInclusion(
           neededBlockData.blockHash,
           parser.getTxidReversed(),
           parser.getSortedHashes(),
@@ -565,7 +560,7 @@ describe("SPVContract", () => {
       parser = new MerkleRawProofParser(txid511, rawProof511);
 
       expect(
-        await spvContract.verifyTx(
+        await spvContract.checkTxInclusion(
           neededBlockData.blockHash,
           parser.getTxidReversed(),
           parser.getSortedHashes(),
@@ -580,7 +575,7 @@ describe("SPVContract", () => {
       parser = new MerkleRawProofParser(txid1024, rawProof1024);
 
       expect(
-        await spvContract.verifyTx(
+        await spvContract.checkTxInclusion(
           neededBlockData.blockHash,
           parser.getTxidReversed(),
           parser.getSortedHashes(),
@@ -595,7 +590,7 @@ describe("SPVContract", () => {
       parser = new MerkleRawProofParser(txid1537, rawProof1537);
 
       expect(
-        await spvContract.verifyTx(
+        await spvContract.checkTxInclusion(
           neededBlockData.blockHash,
           parser.getTxidReversed(),
           parser.getSortedHashes(),
@@ -610,7 +605,7 @@ describe("SPVContract", () => {
       parser = new MerkleRawProofParser(txid1655, rawProof1655);
 
       expect(
-        await spvContract.verifyTx(
+        await spvContract.checkTxInclusion(
           neededBlockData.blockHash,
           parser.getTxidReversed(),
           parser.getSortedHashes(),
@@ -625,7 +620,7 @@ describe("SPVContract", () => {
       parser = new MerkleRawProofParser(txid2000, rawProof2000);
 
       expect(
-        await spvContract.verifyTx(
+        await spvContract.checkTxInclusion(
           neededBlockData.blockHash,
           parser.getTxidReversed(),
           parser.getSortedHashes(),
@@ -640,7 +635,7 @@ describe("SPVContract", () => {
       parser = new MerkleRawProofParser(txidLast, rawProofLast);
 
       expect(
-        await spvContract.verifyTx(
+        await spvContract.checkTxInclusion(
           neededBlockData.blockHash,
           parser.getTxidReversed(),
           parser.getSortedHashes(),
@@ -658,7 +653,7 @@ describe("SPVContract", () => {
       const secondBlockData = getBlockHeaderData(firstBlocksDataFilePath, 2);
 
       expect((await spvContract.getBlockInfo(firstBlockData.blockHash)).isInMainchain).to.be.false;
-      expect(await spvContract.validateBlockHash(firstBlockData.blockHash)).to.be.deep.eq([false, 0n]);
+      expect(await spvContract.getBlockStatus(firstBlockData.blockHash)).to.be.deep.eq([false, 0n]);
 
       let tx = await spvContract.addBlockHeader(firstBlockData.rawHeader);
 
@@ -673,16 +668,16 @@ describe("SPVContract", () => {
         .withArgs(expectedMainchainBlockHeight, expectedMainchainHead);
 
       expect(await spvContract.getMainchainHead()).to.be.eq(expectedMainchainHead);
-      expect(await spvContract.getMainchainBlockHeight()).to.be.eq(expectedMainchainBlockHeight);
+      expect(await spvContract.getMainchainHeight()).to.be.eq(expectedMainchainBlockHeight);
       expect(await spvContract.getBlockHeight(expectedMainchainHead)).to.be.eq(expectedMainchainBlockHeight);
       expect(await spvContract.getBlockMerkleRoot(expectedMainchainHead)).to.be.eq(
         firstBlockData.parsedBlockHeader.merkleroot,
       );
-      expect(await spvContract.validateBlockHash(firstBlockData.blockHash)).to.be.deep.eq([true, 0n]);
+      expect(await spvContract.getBlockStatus(firstBlockData.blockHash)).to.be.deep.eq([true, 0n]);
 
       let blockInfo = await spvContract.getBlockInfo(expectedMainchainHead);
 
-      checkBlockHeaderData(blockInfo.mainBlockData.header, firstBlockData);
+      checkBlockHeaderData(blockInfo.mainBlockData, firstBlockData);
       expect(blockInfo.mainBlockData.blockHeight).to.be.eq(expectedMainchainBlockHeight);
       expect(blockInfo.isInMainchain).to.be.true;
       expect(blockInfo.cumulativeWork).to.be.eq(firstBlockData.parsedBlockHeader.chainwork);
@@ -701,13 +696,13 @@ describe("SPVContract", () => {
 
       blockInfo = await spvContract.getBlockInfo(expectedMainchainHead);
 
-      checkBlockHeaderData(blockInfo.mainBlockData.header, secondBlockData);
+      checkBlockHeaderData(blockInfo.mainBlockData, secondBlockData);
       expect(blockInfo.mainBlockData.blockHeight).to.be.eq(expectedMainchainBlockHeight);
       expect(blockInfo.isInMainchain).to.be.true;
       expect(blockInfo.cumulativeWork).to.be.eq(secondBlockData.parsedBlockHeader.chainwork);
 
-      expect(await spvContract.validateBlockHash(firstBlockData.blockHash)).to.be.deep.eq([true, 1n]);
-      expect(await spvContract.validateBlockHash(secondBlockData.blockHash)).to.be.deep.eq([true, 0n]);
+      expect(await spvContract.getBlockStatus(firstBlockData.blockHash)).to.be.deep.eq([true, 1n]);
+      expect(await spvContract.getBlockStatus(secondBlockData.blockHash)).to.be.deep.eq([true, 0n]);
     });
 
     it("should correctly add target adjustment block", async () => {
@@ -717,7 +712,7 @@ describe("SPVContract", () => {
         .parsedBlockHeader.chainwork;
       const initBlockData = getBlockHeaderData(newestBlocksDataFilePath, initBlockHeight);
 
-      await spvContract["__SPVContract_init(bytes,uint256,uint256)"](
+      await spvContract["__SPVContract_init(bytes,uint64,uint256)"](
         initBlockData.rawHeader,
         initBlockData.height,
         lastEpochCumulativeWork,
@@ -922,7 +917,7 @@ describe("SPVContract", () => {
         .parsedBlockHeader.chainwork;
       const initBlockData = getBlockHeaderData(newestBlocksDataFilePath, initBlockHeight);
 
-      await spvContract["__SPVContract_init(bytes,uint256,uint256)"](
+      await spvContract["__SPVContract_init(bytes,uint64,uint256)"](
         initBlockData.rawHeader,
         initBlockData.height,
         lastEpochCumulativeWork,

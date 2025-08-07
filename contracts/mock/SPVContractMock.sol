@@ -19,7 +19,7 @@ contract SPVContractMock is SPVContract {
 
     function getStorageMedianTime(
         bytes calldata blockHeaderRaw_,
-        uint256 blockHeight_
+        uint64 blockHeight_
     ) external view returns (uint32) {
         (BlockHeaderData memory blockHeader_, ) = blockHeaderRaw_.parseBlockHeaderData();
 
@@ -28,7 +28,7 @@ contract SPVContractMock is SPVContract {
 
     function getMemoryMedianTime(
         bytes[] calldata blockHeaderRawArr_,
-        uint256 to_
+        uint64 to_
     ) external pure returns (uint32) {
         BlockHeaderData[] memory blockHeaders_ = new BlockHeaderData[](blockHeaderRawArr_.length);
 
