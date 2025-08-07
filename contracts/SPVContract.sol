@@ -156,12 +156,13 @@ contract SPVContract is ISPVContract, Initializable {
     }
 
     /// @inheritdoc ISPVContract
-    function getBlockStatus(bytes32 blockHash_) external view returns (bool, uint256) {
-        if (!isInMainchain(blockHash_)) {
-            return (false, 0);
-        }
+    function getMainchainHead() public view returns (bytes32) {
+        return _getSPVContractStorage().mainchainHead;
+    }
 
-        return (true, getMainchainHeight() - getBlockHeight(blockHash_));
+    /// @inheritdoc ISPVContract
+    function getMainchainHeight() public view returns (uint64) {
+        return getBlockHeight(_getSPVContractStorage().mainchainHead);
     }
 
     /// @inheritdoc ISPVContract
@@ -170,7 +171,7 @@ contract SPVContract is ISPVContract, Initializable {
             return blockInfo_;
         }
 
-        BlockData memory blockData_ = getBlockData(blockHash_);
+        BlockData memory blockData_ = _getSPVContractStorage().blocksData[blockHash_];
 
         blockInfo_ = BlockInfo({
             mainBlockData: blockData_,
@@ -180,23 +181,32 @@ contract SPVContract is ISPVContract, Initializable {
     }
 
     /// @inheritdoc ISPVContract
-    function getLastEpochCumulativeWork() external view returns (uint256) {
-        return _getSPVContractStorage().lastEpochCumulativeWork;
+    function getBlockHeader(bytes32 blockHash_) public view returns (BlockHeaderData memory) {
+        BlockData storage blockData = _getSPVContractStorage().blocksData[blockHash_];
+
+        return
+            BlockHeaderData({
+                version: blockData.version,
+                prevBlockHash: blockData.prevBlockHash,
+                merkleRoot: blockData.merkleRoot,
+                time: blockData.time,
+                bits: blockData.bits,
+                nonce: blockData.nonce
+            });
+    }
+
+    /// @inheritdoc ISPVContract
+    function getBlockStatus(bytes32 blockHash_) external view returns (bool, uint64) {
+        if (!isInMainchain(blockHash_)) {
+            return (false, 0);
+        }
+
+        return (true, getMainchainHeight() - getBlockHeight(blockHash_));
     }
 
     /// @inheritdoc ISPVContract
     function getBlockMerkleRoot(bytes32 blockHash_) public view returns (bytes32) {
         return _getSPVContractStorage().blocksData[blockHash_].merkleRoot;
-    }
-
-    /// @inheritdoc ISPVContract
-    function getMainchainHead() public view returns (bytes32) {
-        return _getSPVContractStorage().mainchainHead;
-    }
-
-    /// @inheritdoc ISPVContract
-    function getBlockData(bytes32 blockHash_) public view returns (BlockData memory) {
-        return _getSPVContractStorage().blocksData[blockHash_];
     }
 
     /// @inheritdoc ISPVContract
@@ -215,13 +225,13 @@ contract SPVContract is ISPVContract, Initializable {
     }
 
     /// @inheritdoc ISPVContract
-    function blockExists(bytes32 blockHash_) public view returns (bool) {
-        return _getBlockHeaderTime(blockHash_) > 0;
+    function getLastEpochCumulativeWork() public view returns (uint256) {
+        return _getSPVContractStorage().lastEpochCumulativeWork;
     }
 
     /// @inheritdoc ISPVContract
-    function getMainchainHeight() public view returns (uint256) {
-        return getBlockHeight(_getSPVContractStorage().mainchainHead);
+    function blockExists(bytes32 blockHash_) public view returns (bool) {
+        return _getBlockHeaderTime(blockHash_) > 0;
     }
 
     /// @inheritdoc ISPVContract
@@ -352,7 +362,7 @@ contract SPVContract is ISPVContract, Initializable {
 
     function _getStorageMedianTime(
         BlockHeaderData memory blockHeader_,
-        uint256 blockHeight_
+        uint64 blockHeight_
     ) internal view returns (uint32) {
         if (blockHeight_ == 1) {
             return blockHeader_.time;
@@ -383,7 +393,7 @@ contract SPVContract is ISPVContract, Initializable {
 
     function _getMemoryMedianTime(
         BlockHeaderData[] memory blockHeaders_,
-        uint256 to_
+        uint64 to_
     ) internal pure returns (uint32) {
         if (blockHeaders_.length < MEDIAN_PAST_BLOCKS) {
             return 0;

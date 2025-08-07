@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
+import {BlockHeaderData} from "../libs/BlockHeader.sol";
 import {TxMerkleProof} from "../libs/TxMerkleProof.sol";
 
 /**
@@ -14,7 +15,7 @@ interface ISPVContract {
      * This error indicates that the provided block height is not valid for initialization
      * @param blockHeight The invalid block height
      */
-    error InvalidInitialBlockHeight(uint256 blockHeight);
+    error InvalidInitialBlockHeight(uint64 blockHeight);
     /**
      * @notice Emitted when a previous block does not exist.
      * This error occurs when a block header references a previous block that is not found
@@ -66,7 +67,7 @@ interface ISPVContract {
      * @param newMainchainHead The hash of the new mainchain head
      */
     event MainchainHeadUpdated(
-        uint256 indexed newMainchainHeight,
+        uint64 indexed newMainchainHeight,
         bytes32 indexed newMainchainHead
     );
     /**
@@ -74,7 +75,7 @@ interface ISPVContract {
      * @param blockHeight The height of the added block
      * @param blockHash The hash of the added block
      */
-    event BlockHeaderAdded(uint256 indexed blockHeight, bytes32 indexed blockHash);
+    event BlockHeaderAdded(uint64 indexed blockHeight, bytes32 indexed blockHash);
 
     /**
      * @notice Represents the data of a block
@@ -138,45 +139,6 @@ interface ISPVContract {
     ) external view returns (bool);
 
     /**
-     * @notice Returns the current status of a given block
-     * @param blockHash_ The hash of the block to check
-     * @return isInMainchain True if the block is in the mainchain, false otherwise
-     * @return confirmationsCount The number of blocks that have been mined on top of the given block
-     */
-    function getBlockStatus(bytes32 blockHash_) external view returns (bool, uint256);
-
-    /**
-     * @notice Returns the cumulative work of the last epoch.
-     * This represents the total difficulty accumulated up to the last epoch boundary
-     * @return The cumulative work of the last epoch
-     */
-    function getLastEpochCumulativeWork() external view returns (uint256);
-
-    /**
-     * @notice Returns the Merkle root of a given block hash.
-     * This function retrieves the Merkle root from the stored block header data
-     * @param blockHash_ The hash of the block
-     * @return The Merkle root of the block
-     */
-    function getBlockMerkleRoot(bytes32 blockHash_) external view returns (bytes32);
-
-    /**
-     * @notice Returns detailed information about a block.
-     * This includes its data, mainchain status, and cumulative work
-     * @param blockHash_ The hash of the block
-     * @return blockInfo_ The detailed information of the block
-     */
-    function getBlockInfo(bytes32 blockHash_) external view returns (BlockInfo memory blockInfo_);
-
-    /**
-     * @notice Returns the basic block data for a given block hash.
-     * This includes the block header and its height
-     * @param blockHash_ The hash of the block
-     * @return The basic block data
-     */
-    function getBlockData(bytes32 blockHash_) external view returns (BlockData memory);
-
-    /**
      * @notice Returns the hash of the current mainchain head.
      * This represents the highest block on the most accumulated work chain
      * @return The hash of the mainchain head
@@ -188,7 +150,38 @@ interface ISPVContract {
      * This represents the highest block number on the most accumulated work chain
      * @return The height of the mainchain head
      */
-    function getMainchainHeight() external view returns (uint256);
+    function getMainchainHeight() external view returns (uint64);
+
+    /**
+     * @notice Returns detailed information about a block.
+     * This includes its data, mainchain status, and cumulative work
+     * @param blockHash_ The hash of the block
+     * @return blockInfo_ The detailed information of the block
+     */
+    function getBlockInfo(bytes32 blockHash_) external view returns (BlockInfo memory blockInfo_);
+
+    /**
+     * @notice Returns the block header data for a given block hash.
+     * @param blockHash The hash of the block
+     * @return The block header data
+     */
+    function getBlockHeader(bytes32 blockHash) external view returns (BlockHeaderData memory);
+
+    /**
+     * @notice Returns the current status of a given block
+     * @param blockHash_ The hash of the block to check
+     * @return isInMainchain True if the block is in the mainchain, false otherwise
+     * @return confirmationsCount The number of blocks that have been mined on top of the given block
+     */
+    function getBlockStatus(bytes32 blockHash_) external view returns (bool, uint64);
+
+    /**
+     * @notice Returns the Merkle root of a given block hash.
+     * This function retrieves the Merkle root from the stored block header data
+     * @param blockHash_ The hash of the block
+     * @return The Merkle root of the block
+     */
+    function getBlockMerkleRoot(bytes32 blockHash_) external view returns (bytes32);
 
     /**
      * @notice Returns the block height for a given block hash
@@ -213,6 +206,13 @@ interface ISPVContract {
      * @return The target of the block
      */
     function getBlockTarget(bytes32 blockHash_) external view returns (bytes32);
+
+    /**
+     * @notice Returns the cumulative work of the last epoch.
+     * This represents the total difficulty accumulated up to the last epoch boundary
+     * @return The cumulative work of the last epoch
+     */
+    function getLastEpochCumulativeWork() external view returns (uint256);
 
     /**
      * @notice Checks if a block exists in the contract's storage.

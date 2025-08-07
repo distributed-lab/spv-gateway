@@ -12,7 +12,7 @@ library TargetsHelper {
      * @notice The ideal expected time for 2016 blocks to be mined, in seconds.
      * This is based on a 10-minute block interval
      */
-    uint256 public constant EXPECTED_TARGET_BLOCKS_TIME = 1209600;
+    uint32 public constant EXPECTED_TARGET_BLOCKS_TIME = 1209600;
     /**
      * @notice The number of blocks after which the difficulty target is adjusted.
      * This is a fundamental constant in Bitcoin's difficulty adjustment algorithm
