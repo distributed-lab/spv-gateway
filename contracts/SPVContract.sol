@@ -3,18 +3,20 @@ pragma solidity ^0.8.28;
 
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-import {LibSort} from "solady/src/utils/LibSort.sol";
-import {LibBit} from "solady/src/utils/LibBit.sol";
+import {BlockHeader} from "@solarity/solidity-lib/libs/bitcoin/BlockHeader.sol";
+import {TxMerkleProof} from "@solarity/solidity-lib/libs/bitcoin/TxMerkleProof.sol";
+import {EndianConverter} from "@solarity/solidity-lib/libs/utils/EndianConverter.sol";
 
-import {BlockHeader, BlockHeaderData} from "./libs/BlockHeader.sol";
+import {LibSort} from "solady/src/utils/LibSort.sol";
+
 import {TargetsHelper} from "./libs/TargetsHelper.sol";
-import {TxMerkleProof} from "./libs/TxMerkleProof.sol";
 
 import {ISPVContract} from "./interfaces/ISPVContract.sol";
 
 contract SPVContract is ISPVContract, Initializable {
     using BlockHeader for bytes;
     using TargetsHelper for bytes32;
+    using EndianConverter for bytes32;
 
     uint8 public constant MEDIAN_PAST_BLOCKS = 11;
 
@@ -39,7 +41,7 @@ contract SPVContract is ISPVContract, Initializable {
     }
 
     function __SPVContract_init() external initializer {
-        BlockHeaderData memory genesisBlockHeader_ = BlockHeaderData({
+        BlockHeader.HeaderData memory genesisBlockHeader_ = BlockHeader.HeaderData({
             version: 1,
             prevBlockHash: bytes32(0),
             merkleRoot: 0x4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b,
@@ -59,7 +61,7 @@ contract SPVContract is ISPVContract, Initializable {
         uint64 blockHeight_,
         uint256 cumulativeWork_
     ) external initializer {
-        (BlockHeaderData memory blockHeader_, bytes32 blockHash_) = _parseBlockHeaderRaw(
+        (BlockHeader.HeaderData memory blockHeader_, bytes32 blockHash_) = _parseBlockHeaderRaw(
             blockHeaderRaw_
         );
 
@@ -87,7 +89,7 @@ contract SPVContract is ISPVContract, Initializable {
         bytes[] calldata blockHeaderRawArray_
     ) external broadcastMainchainUpdateEvent {
         (
-            BlockHeaderData[] memory blockHeaders_,
+            BlockHeader.HeaderData[] memory blockHeaders_,
             bytes32[] memory blockHashes_
         ) = _parseBlockHeadersRaw(blockHeaderRawArray_);
 
@@ -117,7 +119,7 @@ contract SPVContract is ISPVContract, Initializable {
     function addBlockHeader(
         bytes calldata blockHeaderRaw_
     ) external broadcastMainchainUpdateEvent {
-        (BlockHeaderData memory blockHeader_, bytes32 blockHash_) = _parseBlockHeaderRaw(
+        (BlockHeader.HeaderData memory blockHeader_, bytes32 blockHash_) = _parseBlockHeaderRaw(
             blockHeaderRaw_
         );
 
@@ -143,16 +145,21 @@ contract SPVContract is ISPVContract, Initializable {
 
     /// @inheritdoc ISPVContract
     function checkTxInclusion(
-        bytes32 blockHash_,
-        bytes32 txid_,
         bytes32[] calldata merkleProof_,
-        TxMerkleProof.HashDirection[] calldata directions_
+        bytes32 blockHash_,
+        bytes32 txId_,
+        uint256 txIndex_,
+        uint256 minConfirmationsCount_
     ) external view returns (bool) {
-        bytes32 blockMerkleRoot_ = getBlockMerkleRoot(blockHash_);
+        (bool isInMainchain_, uint256 confirmationsCount_) = getBlockStatus(blockHash_);
 
-        bytes32 reversedRoot_ = bytes32(LibBit.reverseBytes(uint256(blockMerkleRoot_)));
+        if (!isInMainchain_ || confirmationsCount_ < minConfirmationsCount_) {
+            return false;
+        }
 
-        return TxMerkleProof.verify(merkleProof_, directions_, reversedRoot_, txid_);
+        bytes32 leRoot_ = getBlockMerkleRoot(blockHash_).bytes32BEtoLE();
+
+        return TxMerkleProof.verify(merkleProof_, leRoot_, txId_, txIndex_);
     }
 
     /// @inheritdoc ISPVContract
@@ -181,11 +188,13 @@ contract SPVContract is ISPVContract, Initializable {
     }
 
     /// @inheritdoc ISPVContract
-    function getBlockHeader(bytes32 blockHash_) public view returns (BlockHeaderData memory) {
+    function getBlockHeader(
+        bytes32 blockHash_
+    ) public view returns (BlockHeader.HeaderData memory) {
         BlockData storage blockData = _getSPVContractStorage().blocksData[blockHash_];
 
         return
-            BlockHeaderData({
+            BlockHeader.HeaderData({
                 version: blockData.version,
                 prevBlockHash: blockData.prevBlockHash,
                 merkleRoot: blockData.merkleRoot,
@@ -196,7 +205,7 @@ contract SPVContract is ISPVContract, Initializable {
     }
 
     /// @inheritdoc ISPVContract
-    function getBlockStatus(bytes32 blockHash_) external view returns (bool, uint64) {
+    function getBlockStatus(bytes32 blockHash_) public view returns (bool, uint64) {
         if (!isInMainchain(blockHash_)) {
             return (false, 0);
         }
@@ -240,7 +249,7 @@ contract SPVContract is ISPVContract, Initializable {
     }
 
     function _addBlock(
-        BlockHeaderData memory blockHeader_,
+        BlockHeader.HeaderData memory blockHeader_,
         bytes32 blockHash_,
         uint64 blockHeight_
     ) internal {
@@ -262,7 +271,7 @@ contract SPVContract is ISPVContract, Initializable {
     }
 
     function _updateMainchainHead(
-        BlockHeaderData memory blockHeader_,
+        BlockHeader.HeaderData memory blockHeader_,
         bytes32 blockHash_,
         uint64 blockHeight_
     ) internal {
@@ -328,11 +337,11 @@ contract SPVContract is ISPVContract, Initializable {
     )
         internal
         view
-        returns (BlockHeaderData[] memory blockHeaders_, bytes32[] memory blockHashes_)
+        returns (BlockHeader.HeaderData[] memory blockHeaders_, bytes32[] memory blockHashes_)
     {
         require(blockHeaderRawArray_.length > 0, EmptyBlockHeaderArray());
 
-        blockHeaders_ = new BlockHeaderData[](blockHeaderRawArray_.length);
+        blockHeaders_ = new BlockHeader.HeaderData[](blockHeaderRawArray_.length);
         blockHashes_ = new bytes32[](blockHeaderRawArray_.length);
 
         for (uint256 i = 0; i < blockHeaderRawArray_.length; ++i) {
@@ -354,14 +363,14 @@ contract SPVContract is ISPVContract, Initializable {
 
     function _parseBlockHeaderRaw(
         bytes calldata blockHeaderRaw_
-    ) internal view returns (BlockHeaderData memory blockHeader_, bytes32 blockHash_) {
-        (blockHeader_, blockHash_) = blockHeaderRaw_.parseBlockHeaderData();
+    ) internal view returns (BlockHeader.HeaderData memory blockHeader_, bytes32 blockHash_) {
+        (blockHeader_, blockHash_) = blockHeaderRaw_.parseBlockHeader(true);
 
         _onlyNonExistingBlock(blockHash_);
     }
 
     function _getStorageMedianTime(
-        BlockHeaderData memory blockHeader_,
+        BlockHeader.HeaderData memory blockHeader_,
         uint64 blockHeight_
     ) internal view returns (uint32) {
         if (blockHeight_ == 1) {
@@ -392,7 +401,7 @@ contract SPVContract is ISPVContract, Initializable {
     }
 
     function _getMemoryMedianTime(
-        BlockHeaderData[] memory blockHeaders_,
+        BlockHeader.HeaderData[] memory blockHeaders_,
         uint64 to_
     ) internal pure returns (uint32) {
         if (blockHeaders_.length < MEDIAN_PAST_BLOCKS) {
@@ -435,7 +444,7 @@ contract SPVContract is ISPVContract, Initializable {
     }
 
     function _validateBlockRules(
-        BlockHeaderData memory blockHeader_,
+        BlockHeader.HeaderData memory blockHeader_,
         bytes32 blockHash_,
         bytes32 target_,
         uint32 medianTime_

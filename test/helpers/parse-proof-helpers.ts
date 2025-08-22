@@ -1,4 +1,4 @@
-import { ZeroHash } from "ethers";
+import { sha256, ZeroHash } from "ethers";
 
 export class MerkleRawProofParser {
   private txidReversed: string;
@@ -8,8 +8,7 @@ export class MerkleRawProofParser {
   private maxDepth: number;
   private nodeCountPerLevel: number[];
   private txIndex: number;
-  private sortedHashes: string[];
-  private directions: number[];
+  private siblings: string[];
 
   constructor(txid: string, rawProof: string) {
     this.txidReversed = reverseBytes(txid);
@@ -25,28 +24,26 @@ export class MerkleRawProofParser {
 
     offset += hashCountSize;
 
-    const rawHashes = withoutHeader.slice(offset, offset + hashCount * 64);
+    const rawHashes = withoutHeader.slice(offset, offset + Number(hashCount) * 64);
 
     this.hashes = [];
     for (let i = 0; i < hashCount; i++) {
-      this.hashes.push("0x" + rawHashes.slice(i * 64, (i + 1) * 64));
+      this.hashes.push(addHexPrefix(rawHashes.slice(i * 64, (i + 1) * 64)));
     }
 
-    offset = offset + hashCount * 64;
+    offset = offset + Number(hashCount) * 64;
 
     const [byteFlagsCount, byteFlagsCountSize] = parseCuint(withoutHeader, offset);
 
     offset += byteFlagsCountSize;
 
-    const byteFlags = withoutHeader.slice(offset, offset + 2 * byteFlagsCount);
+    const byteFlags = withoutHeader.slice(offset, offset + 2 * Number(byteFlagsCount));
 
     this.flagPath = this.processFlags(byteFlags);
     this.maxDepth = Math.ceil(Math.log2(this.txCountInBlock));
     this.nodeCountPerLevel = this.getNodeCountPerLevel(this.txCountInBlock, this.maxDepth);
 
-    [this.txIndex, this.sortedHashes] = this.processTree(0, 0, 0, 0, 0, []);
-
-    this.directions = this.processDirections(this.txIndex, this.txCountInBlock);
+    [this.txIndex, this.siblings] = this.processTree(0, 0, 0, 0, 0, []);
   }
 
   getTxidReversed(): string {
@@ -57,12 +54,8 @@ export class MerkleRawProofParser {
     return this.txIndex;
   }
 
-  getSortedHashes(): string[] {
-    return this.sortedHashes;
-  }
-
-  getDirections(): number[] {
-    return this.directions;
+  getSiblings(): string[] {
+    return this.siblings;
   }
 
   private processFlags(flagBytes: string): string {
@@ -89,22 +82,25 @@ export class MerkleRawProofParser {
     return result;
   }
 
-  private processDirections(txIndex: number, totalTransactions: number) {
-    let directions: number[] = [];
-    let curIndex = txIndex;
-    let levelSize = totalTransactions;
+  private calculateSiblings(leaf: string, txIndex: number, sortedHashes: string[]): string[] {
+    let computedHash = leaf;
 
-    while (levelSize > 1) {
-      if (curIndex % 2 == 0) {
-        if (levelSize % 2 == 1 && levelSize - 1 == curIndex) directions.push(2);
-        else directions.push(0);
-      } else directions.push(1);
+    for (let i = 0; i < sortedHashes.length; i++) {
+      if (sortedHashes[i] == ZeroHash) {
+        sortedHashes[i] = computedHash;
+      }
 
-      curIndex = Math.floor(curIndex / 2);
-      levelSize = Math.ceil(levelSize / 2);
+      const pairToHash =
+        (txIndex & 1) == 0
+          ? computedHash.slice(2) + sortedHashes[i].slice(2)
+          : sortedHashes[i].slice(2) + computedHash.slice(2);
+
+      computedHash = sha256(sha256(addHexPrefix(pairToHash)));
+
+      txIndex = txIndex / 2;
     }
 
-    return directions;
+    return sortedHashes;
   }
 
   private processTree(
@@ -116,22 +112,24 @@ export class MerkleRawProofParser {
     sortedHashes: string[],
   ): [number, string[]] {
     if (depth == this.maxDepth && this.flagPath.at(currentFlag) == "1") {
-      //this is the tx we searched for
-      ++currentHash;
+      // this is the tx we searched for
+      const leaf = this.hashes[currentHash];
 
       if (this.isNodeWithoutPair(depth, nodePosition)) {
-        sortedHashes.push(ZeroHash);
-      } else if (this.isLastLeaf(nodePosition, currentHash)) {
         sortedHashes.push(this.hashes[currentHash]);
+      } else if (this.hasSiblingAtRight(nodePosition, currentHash)) {
+        sortedHashes.push(this.hashes[currentHash + 1]);
       }
 
       sortedHashes.reverse();
 
-      return [txIndex, sortedHashes];
+      const siblings = this.calculateSiblings(leaf, txIndex, sortedHashes);
+
+      return [txIndex, siblings];
     }
 
     if (depth == this.maxDepth) {
-      //this is neighbour of the tx we searched for
+      // this is neighbour of the tx we searched for
       sortedHashes.push(this.hashes[currentHash]);
 
       return this.processTree(depth, currentFlag + 1, txIndex + 1, currentHash + 1, nodePosition + 1, sortedHashes);
@@ -165,20 +163,20 @@ export class MerkleRawProofParser {
     );
   }
 
-  private nodesCountIsUneven(level: number): boolean {
-    return this.nodeCountPerLevel[level]! % 2 == 1;
+  private nodesCountIsOdd(level: number): boolean {
+    return (this.nodeCountPerLevel[level]! & 1) == 1;
   }
 
   private isNodeWithoutPair(depth: number, nodePosition: number): boolean {
-    return depth != 0 && this.nodesCountIsUneven(depth) && nodePosition + 1 == this.nodeCountPerLevel[depth];
+    return depth != 0 && this.nodesCountIsOdd(depth) && nodePosition + 1 == this.nodeCountPerLevel[depth];
   }
 
   private isLeftNode(depth: number, nodePosition: number): boolean {
-    return depth != 0 && nodePosition % 2 == 0;
+    return depth != 0 && (nodePosition & 1) == 0;
   }
 
-  private isLastLeaf(nodePosition: number, currentHash: number): boolean {
-    return nodePosition % 2 == 0 && currentHash < this.hashes.length;
+  private hasSiblingAtRight(nodePosition: number, currentHash: number): boolean {
+    return (nodePosition & 1) == 0 && currentHash + 1 < this.hashes.length;
   }
 }
 
@@ -201,4 +199,8 @@ function parseCuint(data: string, offset: number): [number, number] {
   if (firstByte == 0xfd) return [parseInt(data.slice(offset + 2, offset + 6), 16), 6];
   if (firstByte == 0xfe) return [parseInt(data.slice(offset + 2, offset + 10), 16), 10];
   return [parseInt(data.slice(offset + 2, offset + 18), 16), 18];
+}
+
+function addHexPrefix(str: string): string {
+  return `0x${str}`;
 }

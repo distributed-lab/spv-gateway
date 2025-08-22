@@ -247,10 +247,11 @@ describe("SPVContract", () => {
 
         expect(
           await spvContract.checkTxInclusion(
+            parser.getSiblings(),
             neededBlockData.blockHash,
             parser.getTxidReversed(),
-            parser.getSortedHashes(),
-            parser.getDirections(),
+            parser.getTxIndex(),
+            6n,
           ),
         ).to.be.true;
       });
@@ -265,10 +266,11 @@ describe("SPVContract", () => {
 
         expect(
           await spvContract.checkTxInclusion(
+            parser.getSiblings(),
             neededBlockData.blockHash,
             parser.getTxidReversed(),
-            parser.getSortedHashes(),
-            parser.getDirections(),
+            parser.getTxIndex(),
+            6n,
           ),
         ).to.be.true;
       });
@@ -284,10 +286,11 @@ describe("SPVContract", () => {
 
         expect(
           await spvContract.checkTxInclusion(
+            parser.getSiblings(),
             neededBlockData.blockHash,
             parser.getTxidReversed(),
-            parser.getSortedHashes(),
-            parser.getDirections(),
+            parser.getTxIndex(),
+            6n,
           ),
         ).to.be.true;
       });
@@ -303,10 +306,11 @@ describe("SPVContract", () => {
 
         expect(
           await spvContract.checkTxInclusion(
+            parser.getSiblings(),
             neededBlockData.blockHash,
             parser.getTxidReversed(),
-            parser.getSortedHashes(),
-            parser.getDirections(),
+            parser.getTxIndex(),
+            6n,
           ),
         ).to.be.true;
       });
@@ -322,10 +326,11 @@ describe("SPVContract", () => {
 
         expect(
           await spvContract.checkTxInclusion(
+            parser.getSiblings(),
             neededBlockData.blockHash,
             parser.getTxidReversed(),
-            parser.getSortedHashes(),
-            parser.getDirections(),
+            parser.getTxIndex(),
+            6n,
           ),
         ).to.be.true;
       });
@@ -341,10 +346,11 @@ describe("SPVContract", () => {
 
         expect(
           await spvContract.checkTxInclusion(
+            parser.getSiblings(),
             neededBlockData.blockHash,
             parser.getTxidReversed(),
-            parser.getSortedHashes(),
-            parser.getDirections(),
+            parser.getTxIndex(),
+            6n,
           ),
         ).to.be.true;
       });
@@ -373,10 +379,11 @@ describe("SPVContract", () => {
 
         expect(
           await spvContract.checkTxInclusion(
+            parser.getSiblings(),
             neededBlockData.blockHash,
             parser.getTxidReversed(),
-            parser.getSortedHashes(),
-            parser.getDirections(),
+            parser.getTxIndex(),
+            6n,
           ),
         ).to.be.true;
 
@@ -388,10 +395,11 @@ describe("SPVContract", () => {
 
         expect(
           await spvContract.checkTxInclusion(
+            parser.getSiblings(),
             neededBlockData.blockHash,
             parser.getTxidReversed(),
-            parser.getSortedHashes(),
-            parser.getDirections(),
+            parser.getTxIndex(),
+            6n,
           ),
         ).to.be.true;
 
@@ -403,10 +411,11 @@ describe("SPVContract", () => {
 
         expect(
           await spvContract.checkTxInclusion(
+            parser.getSiblings(),
             neededBlockData.blockHash,
             parser.getTxidReversed(),
-            parser.getSortedHashes(),
-            parser.getDirections(),
+            parser.getTxIndex(),
+            6n,
           ),
         ).to.be.true;
 
@@ -418,10 +427,11 @@ describe("SPVContract", () => {
 
         expect(
           await spvContract.checkTxInclusion(
+            parser.getSiblings(),
             neededBlockData.blockHash,
             parser.getTxidReversed(),
-            parser.getSortedHashes(),
-            parser.getDirections(),
+            parser.getTxIndex(),
+            6n,
           ),
         ).to.be.true;
 
@@ -433,10 +443,11 @@ describe("SPVContract", () => {
 
         expect(
           await spvContract.checkTxInclusion(
+            parser.getSiblings(),
             neededBlockData.blockHash,
             parser.getTxidReversed(),
-            parser.getSortedHashes(),
-            parser.getDirections(),
+            parser.getTxIndex(),
+            6n,
           ),
         ).to.be.true;
 
@@ -448,10 +459,11 @@ describe("SPVContract", () => {
 
         expect(
           await spvContract.checkTxInclusion(
+            parser.getSiblings(),
             neededBlockData.blockHash,
             parser.getTxidReversed(),
-            parser.getSortedHashes(),
-            parser.getDirections(),
+            parser.getTxIndex(),
+            6n,
           ),
         ).to.be.true;
       });
@@ -460,19 +472,10 @@ describe("SPVContract", () => {
         const neededBlockData = getBlockHeaderData(firstBlocksDataFilePath, 1);
         const txid = "0x0e3e2357e806b6cdb1f70b54c3a3a17b6714ee1f0e68bebb44a74b1efd512098";
 
-        expect(await spvContract.checkTxInclusion(neededBlockData.blockHash, txid, [], [])).to.be.false;
+        expect(await spvContract.checkTxInclusion([], neededBlockData.blockHash, txid, 0n, 0n)).to.be.false;
       });
 
-      it("should revert if proof and directions have different lengths", async () => {
-        const neededBlockData = getBlockHeaderData(firstBlocksDataFilePath, 1);
-        const txid = "0x0e3e2357e806b6cdb1f70b54c3a3a17b6714ee1f0e68bebb44a74b1efd512098";
-
-        await expect(
-          spvContract.checkTxInclusion(neededBlockData.blockHash, txid, [], [1]),
-        ).to.be.revertedWithCustomError(spvContract, "InvalidLengths");
-      });
-
-      it("should correctly return false when the txid is invalid", async () => {
+      it("should correctly return false when the txId is invalid", async () => {
         const neededBlockData = getBlockHeaderData(firstBlocksDataFilePath, 586);
         const txid = "4d6edbeb62735d45ff1565385a8b0045f066055c9425e21540ea7a8060f08bf2";
         const rawProof =
@@ -484,10 +487,44 @@ describe("SPVContract", () => {
 
         expect(
           await spvContract.checkTxInclusion(
+            parser.getSiblings(),
             neededBlockData.blockHash,
             wrongTxId,
-            parser.getSortedHashes(),
-            parser.getDirections(),
+            parser.getTxIndex(),
+            6n,
+          ),
+        ).to.be.false;
+      });
+
+      it("should correctly return false when the minimum confirmations count is not met", async () => {
+        const initBlockHeight = 1001;
+        const batchSize = 200;
+        const batchesCount = 10;
+        const totalBlockToAdd = batchSize * batchesCount;
+        const blocksData = getBlockHeaderDataBatch(firstBlocksDataFilePath, initBlockHeight, totalBlockToAdd);
+
+        for (let i = 0; i < batchesCount; i++) {
+          const currentBlocksData = blocksData.slice(batchSize * i, batchSize * (i + 1));
+          const rawHeaders = currentBlocksData.map((headerData) => headerData.rawHeader);
+
+          await spvContract.addBlockHeaderBatch(rawHeaders);
+        }
+
+        const neededBlockData = getBlockHeaderData(firstBlocksDataFilePath, 2812);
+
+        const rawProof0 =
+          "01000000a4c4e3441c87f39b28b82872de79b57714253c95be052f27f155fe210000000065cbca8fcfb37bb28089b2ea59c92058c2d32ddc2919188ffd98464cc4869a286bcc8749ffff001d1f8015ab06000000047bfaf4b093e82afa7b071a1f15336077f25fdea22a0cfda67573ada4f445c173944badc33f9a723eb1c85dde24374e6dee9259ef4cfa6a10b2fd05b6e55be4002a576b5197fff1776ac8145dfe4946f8ab6b1d28a6c3978365873b7b872a62959d4237a38fded228eccb89962a3cc4b542760a8b74e8d7ee71ab95bc40d06e8d010f";
+        const txid0 = "73c145f4a4ad7375a6fd0c2aa2de5ff2776033151f1a077bfa2ae893b0f4fa7b";
+
+        let parser = new MerkleRawProofParser(txid0, rawProof0);
+
+        expect(
+          await spvContract.checkTxInclusion(
+            parser.getSiblings(),
+            neededBlockData.blockHash,
+            parser.getTxidReversed(),
+            parser.getTxIndex(),
+            200n,
           ),
         ).to.be.false;
       });
@@ -516,10 +553,11 @@ describe("SPVContract", () => {
 
       expect(
         await spvContract.checkTxInclusion(
+          parser.getSiblings(),
           neededBlockData.blockHash,
           parser.getTxidReversed(),
-          parser.getSortedHashes(),
-          parser.getDirections(),
+          parser.getTxIndex(),
+          0n,
         ),
       ).to.be.true;
 
@@ -531,10 +569,11 @@ describe("SPVContract", () => {
 
       expect(
         await spvContract.checkTxInclusion(
+          parser.getSiblings(),
           neededBlockData.blockHash,
           parser.getTxidReversed(),
-          parser.getSortedHashes(),
-          parser.getDirections(),
+          parser.getTxIndex(),
+          0n,
         ),
       ).to.be.true;
 
@@ -546,10 +585,11 @@ describe("SPVContract", () => {
 
       expect(
         await spvContract.checkTxInclusion(
+          parser.getSiblings(),
           neededBlockData.blockHash,
           parser.getTxidReversed(),
-          parser.getSortedHashes(),
-          parser.getDirections(),
+          parser.getTxIndex(),
+          0n,
         ),
       ).to.be.true;
 
@@ -561,10 +601,11 @@ describe("SPVContract", () => {
 
       expect(
         await spvContract.checkTxInclusion(
+          parser.getSiblings(),
           neededBlockData.blockHash,
           parser.getTxidReversed(),
-          parser.getSortedHashes(),
-          parser.getDirections(),
+          parser.getTxIndex(),
+          0n,
         ),
       ).to.be.true;
 
@@ -576,10 +617,11 @@ describe("SPVContract", () => {
 
       expect(
         await spvContract.checkTxInclusion(
+          parser.getSiblings(),
           neededBlockData.blockHash,
           parser.getTxidReversed(),
-          parser.getSortedHashes(),
-          parser.getDirections(),
+          parser.getTxIndex(),
+          0n,
         ),
       ).to.be.true;
 
@@ -591,10 +633,11 @@ describe("SPVContract", () => {
 
       expect(
         await spvContract.checkTxInclusion(
+          parser.getSiblings(),
           neededBlockData.blockHash,
           parser.getTxidReversed(),
-          parser.getSortedHashes(),
-          parser.getDirections(),
+          parser.getTxIndex(),
+          0n,
         ),
       ).to.be.true;
 
@@ -606,10 +649,11 @@ describe("SPVContract", () => {
 
       expect(
         await spvContract.checkTxInclusion(
+          parser.getSiblings(),
           neededBlockData.blockHash,
           parser.getTxidReversed(),
-          parser.getSortedHashes(),
-          parser.getDirections(),
+          parser.getTxIndex(),
+          0n,
         ),
       ).to.be.true;
 
@@ -621,10 +665,11 @@ describe("SPVContract", () => {
 
       expect(
         await spvContract.checkTxInclusion(
+          parser.getSiblings(),
           neededBlockData.blockHash,
           parser.getTxidReversed(),
-          parser.getSortedHashes(),
-          parser.getDirections(),
+          parser.getTxIndex(),
+          0n,
         ),
       ).to.be.true;
 
@@ -636,10 +681,11 @@ describe("SPVContract", () => {
 
       expect(
         await spvContract.checkTxInclusion(
+          parser.getSiblings(),
           neededBlockData.blockHash,
           parser.getTxidReversed(),
-          parser.getSortedHashes(),
-          parser.getDirections(),
+          parser.getTxIndex(),
+          0n,
         ),
       ).to.be.true;
     });
