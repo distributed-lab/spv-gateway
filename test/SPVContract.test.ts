@@ -13,13 +13,13 @@ import {
   Reverter,
 } from "@test-helpers";
 
-import { SPVContractMock } from "@ethers-v6";
+import { SPVGatewayMock } from "@ethers-v6";
 import { MerkleRawProofParser } from "./helpers/parse-proof-helpers";
 
-describe("SPVContract", () => {
+describe("SPVGateway", () => {
   const reverter = new Reverter();
 
-  let spvContract: SPVContractMock;
+  let spvGateway: SPVGatewayMock;
 
   let genesisBlockDataFilePath: string;
   let regtestGenesisBlockDataFilePath: string;
@@ -28,7 +28,7 @@ describe("SPVContract", () => {
   let reorgBlocksDataFilePath: string;
 
   before(async () => {
-    spvContract = await ethers.deployContract("SPVContractMock");
+    spvGateway = await ethers.deployContract("SPVGatewayMock");
 
     genesisBlockDataFilePath = getBlocksDataFilePath("genesis_block.json");
     regtestGenesisBlockDataFilePath = getBlocksDataFilePath("regtest_genesis_block.json");
@@ -45,21 +45,21 @@ describe("SPVContract", () => {
     it("should correctly init SPV contract from genesis state", async () => {
       const genesisData = getBlockHeaderData(genesisBlockDataFilePath, 0);
 
-      const tx = await spvContract["__SPVContract_init()"]();
+      const tx = await spvGateway["__SPVGateway_init()"]();
 
-      await expect(tx).to.emit(spvContract, "MainchainHeadUpdated").withArgs(genesisData.height, genesisData.blockHash);
-      await expect(tx).to.emit(spvContract, "BlockHeaderAdded").withArgs(genesisData.height, genesisData.blockHash);
+      await expect(tx).to.emit(spvGateway, "MainchainHeadUpdated").withArgs(genesisData.height, genesisData.blockHash);
+      await expect(tx).to.emit(spvGateway, "BlockHeaderAdded").withArgs(genesisData.height, genesisData.blockHash);
     });
 
     it("should correctly init SPV contract from genesis state passed outside", async () => {
       const initBlockData = getBlockHeaderData(genesisBlockDataFilePath, 0);
 
-      const tx = await spvContract["__SPVContract_init(bytes,uint64,uint256)"](initBlockData.rawHeader, 0, 0);
+      const tx = await spvGateway["__SPVGateway_init(bytes,uint64,uint256)"](initBlockData.rawHeader, 0, 0);
 
       await expect(tx)
-        .to.emit(spvContract, "MainchainHeadUpdated")
+        .to.emit(spvGateway, "MainchainHeadUpdated")
         .withArgs(initBlockData.height, initBlockData.blockHash);
-      await expect(tx).to.emit(spvContract, "BlockHeaderAdded").withArgs(initBlockData.height, initBlockData.blockHash);
+      await expect(tx).to.emit(spvGateway, "BlockHeaderAdded").withArgs(initBlockData.height, initBlockData.blockHash);
     });
 
     it("should correctly init SPV contract from some block", async () => {
@@ -69,20 +69,20 @@ describe("SPVContract", () => {
         .parsedBlockHeader.chainwork;
       const initBlockData = getBlockHeaderData(newestBlocksDataFilePath, initBlockHeight);
 
-      const tx = await spvContract["__SPVContract_init(bytes,uint64,uint256)"](
+      const tx = await spvGateway["__SPVGateway_init(bytes,uint64,uint256)"](
         initBlockData.rawHeader,
         initBlockData.height,
         lastEpochCumulativeWork,
       );
 
       await expect(tx)
-        .to.emit(spvContract, "MainchainHeadUpdated")
+        .to.emit(spvGateway, "MainchainHeadUpdated")
         .withArgs(initBlockData.height, initBlockData.blockHash);
-      await expect(tx).to.emit(spvContract, "BlockHeaderAdded").withArgs(initBlockData.height, initBlockData.blockHash);
+      await expect(tx).to.emit(spvGateway, "BlockHeaderAdded").withArgs(initBlockData.height, initBlockData.blockHash);
 
-      expect(await spvContract.getLastEpochCumulativeWork()).to.be.eq(lastEpochCumulativeWork);
-      expect(await spvContract.getMainchainHead()).to.be.eq(initBlockData.blockHash);
-      expect(await spvContract.getMainchainHeight()).to.be.eq(initBlockData.height);
+      expect(await spvGateway.getLastEpochCumulativeWork()).to.be.eq(lastEpochCumulativeWork);
+      expect(await spvGateway.getMainchainHead()).to.be.eq(initBlockData.blockHash);
+      expect(await spvGateway.getMainchainHeight()).to.be.eq(initBlockData.height);
     });
 
     it("should get exception if pass invalid block height", async () => {
@@ -93,21 +93,21 @@ describe("SPVContract", () => {
       const initBlockData = getBlockHeaderData(newestBlocksDataFilePath, initBlockHeight);
 
       await expect(
-        spvContract["__SPVContract_init(bytes,uint64,uint256)"](
+        spvGateway["__SPVGateway_init(bytes,uint64,uint256)"](
           initBlockData.rawHeader,
           initBlockData.height,
           lastEpochCumulativeWork,
         ),
       )
-        .to.be.revertedWithCustomError(spvContract, "InvalidInitialBlockHeight")
+        .to.be.revertedWithCustomError(spvGateway, "InvalidInitialBlockHeight")
         .withArgs(initBlockHeight);
     });
 
     it("should get exception if try to call init function twice", async () => {
-      await spvContract["__SPVContract_init()"]();
+      await spvGateway["__SPVGateway_init()"]();
 
-      await expect(spvContract["__SPVContract_init()"]()).to.be.revertedWithCustomError(
-        spvContract,
+      await expect(spvGateway["__SPVGateway_init()"]()).to.be.revertedWithCustomError(
+        spvGateway,
         "InvalidInitialization",
       );
 
@@ -117,12 +117,12 @@ describe("SPVContract", () => {
       const initBlockData = getBlockHeaderData(newestBlocksDataFilePath, initBlockHeight);
 
       await expect(
-        spvContract["__SPVContract_init(bytes,uint64,uint256)"](
+        spvGateway["__SPVGateway_init(bytes,uint64,uint256)"](
           initBlockData.rawHeader,
           initBlockData.height,
           lastEpochCumulativeWork,
         ),
-      ).to.be.revertedWithCustomError(spvContract, "InvalidInitialization");
+      ).to.be.revertedWithCustomError(spvGateway, "InvalidInitialization");
     });
   });
 
@@ -134,7 +134,7 @@ describe("SPVContract", () => {
         .parsedBlockHeader.chainwork;
       const initBlockData = getBlockHeaderData(newestBlocksDataFilePath, initBlockHeight);
 
-      await spvContract["__SPVContract_init(bytes,uint64,uint256)"](
+      await spvGateway["__SPVGateway_init(bytes,uint64,uint256)"](
         initBlockData.rawHeader,
         initBlockData.height,
         lastEpochCumulativeWork,
@@ -147,29 +147,29 @@ describe("SPVContract", () => {
 
       let currentMainchainHead = initBlockData.blockHash;
 
-      expect(await spvContract.getMainchainHead()).to.be.eq(currentMainchainHead);
+      expect(await spvGateway.getMainchainHead()).to.be.eq(currentMainchainHead);
 
       for (let i = 0; i < batchesCount; i++) {
         const currentBlocksData = blocksData.slice(batchSize * i, batchSize * (i + 1));
         const rawHeaders = currentBlocksData.map((headerData) => headerData.rawHeader);
 
-        const tx = await spvContract.addBlockHeaderBatch(rawHeaders);
+        const tx = await spvGateway.addBlockHeaderBatch(rawHeaders);
 
         await expect(tx)
-          .to.emit(spvContract, "MainchainHeadUpdated")
+          .to.emit(spvGateway, "MainchainHeadUpdated")
           .withArgs(currentBlocksData[batchSize - 1].height, currentBlocksData[batchSize - 1].blockHash);
       }
 
-      expect(await spvContract.getLastEpochCumulativeWork()).to.be.eq(
+      expect(await spvGateway.getLastEpochCumulativeWork()).to.be.eq(
         blocksData[DIFFICULTY_ADJUSTMENT_INTERVAL - 2].parsedBlockHeader.chainwork,
       );
-      expect(await spvContract.getMainchainHead()).to.be.eq(blocksData[totalBlockToAdd - 1].blockHash);
-      expect(await spvContract.getMainchainHeight()).to.be.eq(initBlockHeight + totalBlockToAdd);
+      expect(await spvGateway.getMainchainHead()).to.be.eq(blocksData[totalBlockToAdd - 1].blockHash);
+      expect(await spvGateway.getMainchainHeight()).to.be.eq(initBlockHeight + totalBlockToAdd);
 
       await Promise.all(
         blocksData.map((data) => {
           return new Promise(async (resolve) => {
-            expect(await spvContract.isInMainchain(data.blockHash)).to.be.true;
+            expect(await spvGateway.isInMainchain(data.blockHash)).to.be.true;
 
             resolve(true);
           });
@@ -178,7 +178,7 @@ describe("SPVContract", () => {
     });
 
     it("should get exception if the first block does not exist", async () => {
-      await spvContract["__SPVContract_init()"]();
+      await spvGateway["__SPVGateway_init()"]();
 
       const blockHeadersData = [];
 
@@ -188,36 +188,33 @@ describe("SPVContract", () => {
 
       const rawHeaders = blockHeadersData.map((headerData) => headerData.rawHeader);
 
-      await expect(spvContract.addBlockHeaderBatch(rawHeaders))
-        .to.revertedWithCustomError(spvContract, "PrevBlockDoesNotExist")
+      await expect(spvGateway.addBlockHeaderBatch(rawHeaders))
+        .to.revertedWithCustomError(spvGateway, "PrevBlockDoesNotExist")
         .withArgs(blockHeadersData[0].parsedBlockHeader.previousblockhash);
     });
 
     it("should get exception if pass block headers in the invalid order", async () => {
-      await spvContract["__SPVContract_init()"]();
+      await spvGateway["__SPVGateway_init()"]();
 
       await expect(
-        spvContract.addBlockHeaderBatch([
+        spvGateway.addBlockHeaderBatch([
           getBlockHeaderData(firstBlocksDataFilePath, 1).rawHeader,
           getBlockHeaderData(firstBlocksDataFilePath, 3).rawHeader,
         ]),
-      ).to.revertedWithCustomError(spvContract, "InvalidBlockHeadersOrder");
+      ).to.revertedWithCustomError(spvGateway, "InvalidBlockHeadersOrder");
     });
 
     it("should get exception if pass zero array", async () => {
-      await spvContract["__SPVContract_init()"]();
+      await spvGateway["__SPVGateway_init()"]();
 
-      await expect(spvContract.addBlockHeaderBatch([])).to.revertedWithCustomError(
-        spvContract,
-        "EmptyBlockHeaderArray",
-      );
+      await expect(spvGateway.addBlockHeaderBatch([])).to.revertedWithCustomError(spvGateway, "EmptyBlockHeaderArray");
     });
   });
 
   describe("#checkTxInclusion", () => {
     describe("#when there are from 1 to 6 transactions in a block", () => {
       beforeEach(async () => {
-        await spvContract["__SPVContract_init()"]();
+        await spvGateway["__SPVGateway_init()"]();
 
         const initBlockHeight = 1;
         const batchSize = 200;
@@ -229,10 +226,10 @@ describe("SPVContract", () => {
           const currentBlocksData = blocksData.slice(batchSize * i, batchSize * (i + 1));
           const rawHeaders = currentBlocksData.map((headerData) => headerData.rawHeader);
 
-          const tx = await spvContract.addBlockHeaderBatch(rawHeaders);
+          const tx = await spvGateway.addBlockHeaderBatch(rawHeaders);
 
           await expect(tx)
-            .to.emit(spvContract, "MainchainHeadUpdated")
+            .to.emit(spvGateway, "MainchainHeadUpdated")
             .withArgs(currentBlocksData[batchSize - 1].height, currentBlocksData[batchSize - 1].blockHash);
         }
       });
@@ -246,7 +243,7 @@ describe("SPVContract", () => {
         const parser = new MerkleRawProofParser(txid, rawProof);
 
         expect(
-          await spvContract.checkTxInclusion(
+          await spvGateway.checkTxInclusion(
             parser.getSiblings(),
             neededBlockData.blockHash,
             parser.getTxidReversed(),
@@ -265,7 +262,7 @@ describe("SPVContract", () => {
         const parser = new MerkleRawProofParser(txid, rawProof);
 
         expect(
-          await spvContract.checkTxInclusion(
+          await spvGateway.checkTxInclusion(
             parser.getSiblings(),
             neededBlockData.blockHash,
             parser.getTxidReversed(),
@@ -285,7 +282,7 @@ describe("SPVContract", () => {
         const parser = new MerkleRawProofParser(txid, rawProof);
 
         expect(
-          await spvContract.checkTxInclusion(
+          await spvGateway.checkTxInclusion(
             parser.getSiblings(),
             neededBlockData.blockHash,
             parser.getTxidReversed(),
@@ -305,7 +302,7 @@ describe("SPVContract", () => {
         const parser = new MerkleRawProofParser(txid, rawProof);
 
         expect(
-          await spvContract.checkTxInclusion(
+          await spvGateway.checkTxInclusion(
             parser.getSiblings(),
             neededBlockData.blockHash,
             parser.getTxidReversed(),
@@ -325,7 +322,7 @@ describe("SPVContract", () => {
         const parser = new MerkleRawProofParser(txid, rawProof);
 
         expect(
-          await spvContract.checkTxInclusion(
+          await spvGateway.checkTxInclusion(
             parser.getSiblings(),
             neededBlockData.blockHash,
             parser.getTxidReversed(),
@@ -345,7 +342,7 @@ describe("SPVContract", () => {
         const parser = new MerkleRawProofParser(txid, rawProof);
 
         expect(
-          await spvContract.checkTxInclusion(
+          await spvGateway.checkTxInclusion(
             parser.getSiblings(),
             neededBlockData.blockHash,
             parser.getTxidReversed(),
@@ -366,7 +363,7 @@ describe("SPVContract", () => {
           const currentBlocksData = blocksData.slice(batchSize * i, batchSize * (i + 1));
           const rawHeaders = currentBlocksData.map((headerData) => headerData.rawHeader);
 
-          await spvContract.addBlockHeaderBatch(rawHeaders);
+          await spvGateway.addBlockHeaderBatch(rawHeaders);
         }
 
         const neededBlockData = getBlockHeaderData(firstBlocksDataFilePath, 2812);
@@ -378,7 +375,7 @@ describe("SPVContract", () => {
         let parser = new MerkleRawProofParser(txid0, rawProof0);
 
         expect(
-          await spvContract.checkTxInclusion(
+          await spvGateway.checkTxInclusion(
             parser.getSiblings(),
             neededBlockData.blockHash,
             parser.getTxidReversed(),
@@ -394,7 +391,7 @@ describe("SPVContract", () => {
         parser = new MerkleRawProofParser(txid1, rawProof1);
 
         expect(
-          await spvContract.checkTxInclusion(
+          await spvGateway.checkTxInclusion(
             parser.getSiblings(),
             neededBlockData.blockHash,
             parser.getTxidReversed(),
@@ -410,7 +407,7 @@ describe("SPVContract", () => {
         parser = new MerkleRawProofParser(txid2, rawProof2);
 
         expect(
-          await spvContract.checkTxInclusion(
+          await spvGateway.checkTxInclusion(
             parser.getSiblings(),
             neededBlockData.blockHash,
             parser.getTxidReversed(),
@@ -426,7 +423,7 @@ describe("SPVContract", () => {
         parser = new MerkleRawProofParser(txid3, rawProof3);
 
         expect(
-          await spvContract.checkTxInclusion(
+          await spvGateway.checkTxInclusion(
             parser.getSiblings(),
             neededBlockData.blockHash,
             parser.getTxidReversed(),
@@ -442,7 +439,7 @@ describe("SPVContract", () => {
         parser = new MerkleRawProofParser(txid4, rawProof4);
 
         expect(
-          await spvContract.checkTxInclusion(
+          await spvGateway.checkTxInclusion(
             parser.getSiblings(),
             neededBlockData.blockHash,
             parser.getTxidReversed(),
@@ -458,7 +455,7 @@ describe("SPVContract", () => {
         parser = new MerkleRawProofParser(txid5, rawProof5);
 
         expect(
-          await spvContract.checkTxInclusion(
+          await spvGateway.checkTxInclusion(
             parser.getSiblings(),
             neededBlockData.blockHash,
             parser.getTxidReversed(),
@@ -472,7 +469,7 @@ describe("SPVContract", () => {
         const neededBlockData = getBlockHeaderData(firstBlocksDataFilePath, 1);
         const txid = "0x0e3e2357e806b6cdb1f70b54c3a3a17b6714ee1f0e68bebb44a74b1efd512098";
 
-        expect(await spvContract.checkTxInclusion([], neededBlockData.blockHash, txid, 0n, 0n)).to.be.false;
+        expect(await spvGateway.checkTxInclusion([], neededBlockData.blockHash, txid, 0n, 0n)).to.be.false;
       });
 
       it("should correctly return false when the txId is invalid", async () => {
@@ -486,7 +483,7 @@ describe("SPVContract", () => {
         const wrongTxId = "0x0" + parser.getTxidReversed().slice(3);
 
         expect(
-          await spvContract.checkTxInclusion(
+          await spvGateway.checkTxInclusion(
             parser.getSiblings(),
             neededBlockData.blockHash,
             wrongTxId,
@@ -507,7 +504,7 @@ describe("SPVContract", () => {
           const currentBlocksData = blocksData.slice(batchSize * i, batchSize * (i + 1));
           const rawHeaders = currentBlocksData.map((headerData) => headerData.rawHeader);
 
-          await spvContract.addBlockHeaderBatch(rawHeaders);
+          await spvGateway.addBlockHeaderBatch(rawHeaders);
         }
 
         const neededBlockData = getBlockHeaderData(firstBlocksDataFilePath, 2812);
@@ -519,7 +516,7 @@ describe("SPVContract", () => {
         let parser = new MerkleRawProofParser(txid0, rawProof0);
 
         expect(
-          await spvContract.checkTxInclusion(
+          await spvGateway.checkTxInclusion(
             parser.getSiblings(),
             neededBlockData.blockHash,
             parser.getTxidReversed(),
@@ -537,7 +534,7 @@ describe("SPVContract", () => {
         .parsedBlockHeader.chainwork;
       const initBlockData = getBlockHeaderData(newestBlocksDataFilePath, initBlockHeight);
 
-      await spvContract["__SPVContract_init(bytes,uint64,uint256)"](
+      await spvGateway["__SPVGateway_init(bytes,uint64,uint256)"](
         initBlockData.rawHeader,
         initBlockData.height,
         lastEpochCumulativeWork,
@@ -552,7 +549,7 @@ describe("SPVContract", () => {
       let parser = new MerkleRawProofParser(txid0, rawProof0);
 
       expect(
-        await spvContract.checkTxInclusion(
+        await spvGateway.checkTxInclusion(
           parser.getSiblings(),
           neededBlockData.blockHash,
           parser.getTxidReversed(),
@@ -568,7 +565,7 @@ describe("SPVContract", () => {
       parser = new MerkleRawProofParser(txid1, rawProof1);
 
       expect(
-        await spvContract.checkTxInclusion(
+        await spvGateway.checkTxInclusion(
           parser.getSiblings(),
           neededBlockData.blockHash,
           parser.getTxidReversed(),
@@ -584,7 +581,7 @@ describe("SPVContract", () => {
       parser = new MerkleRawProofParser(txid170, rawProof170);
 
       expect(
-        await spvContract.checkTxInclusion(
+        await spvGateway.checkTxInclusion(
           parser.getSiblings(),
           neededBlockData.blockHash,
           parser.getTxidReversed(),
@@ -600,7 +597,7 @@ describe("SPVContract", () => {
       parser = new MerkleRawProofParser(txid511, rawProof511);
 
       expect(
-        await spvContract.checkTxInclusion(
+        await spvGateway.checkTxInclusion(
           parser.getSiblings(),
           neededBlockData.blockHash,
           parser.getTxidReversed(),
@@ -616,7 +613,7 @@ describe("SPVContract", () => {
       parser = new MerkleRawProofParser(txid1024, rawProof1024);
 
       expect(
-        await spvContract.checkTxInclusion(
+        await spvGateway.checkTxInclusion(
           parser.getSiblings(),
           neededBlockData.blockHash,
           parser.getTxidReversed(),
@@ -632,7 +629,7 @@ describe("SPVContract", () => {
       parser = new MerkleRawProofParser(txid1537, rawProof1537);
 
       expect(
-        await spvContract.checkTxInclusion(
+        await spvGateway.checkTxInclusion(
           parser.getSiblings(),
           neededBlockData.blockHash,
           parser.getTxidReversed(),
@@ -648,7 +645,7 @@ describe("SPVContract", () => {
       parser = new MerkleRawProofParser(txid1655, rawProof1655);
 
       expect(
-        await spvContract.checkTxInclusion(
+        await spvGateway.checkTxInclusion(
           parser.getSiblings(),
           neededBlockData.blockHash,
           parser.getTxidReversed(),
@@ -664,7 +661,7 @@ describe("SPVContract", () => {
       parser = new MerkleRawProofParser(txid2000, rawProof2000);
 
       expect(
-        await spvContract.checkTxInclusion(
+        await spvGateway.checkTxInclusion(
           parser.getSiblings(),
           neededBlockData.blockHash,
           parser.getTxidReversed(),
@@ -680,7 +677,7 @@ describe("SPVContract", () => {
       parser = new MerkleRawProofParser(txidLast, rawProofLast);
 
       expect(
-        await spvContract.checkTxInclusion(
+        await spvGateway.checkTxInclusion(
           parser.getSiblings(),
           neededBlockData.blockHash,
           parser.getTxidReversed(),
@@ -693,62 +690,62 @@ describe("SPVContract", () => {
 
   describe("#addBlockHeader", () => {
     it("should correctly add new block header", async () => {
-      await spvContract["__SPVContract_init()"]();
+      await spvGateway["__SPVGateway_init()"]();
 
       const firstBlockData = getBlockHeaderData(firstBlocksDataFilePath, 1);
       const secondBlockData = getBlockHeaderData(firstBlocksDataFilePath, 2);
 
-      expect((await spvContract.getBlockInfo(firstBlockData.blockHash)).isInMainchain).to.be.false;
-      expect(await spvContract.getBlockStatus(firstBlockData.blockHash)).to.be.deep.eq([false, 0n]);
+      expect((await spvGateway.getBlockInfo(firstBlockData.blockHash)).isInMainchain).to.be.false;
+      expect(await spvGateway.getBlockStatus(firstBlockData.blockHash)).to.be.deep.eq([false, 0n]);
 
-      let tx = await spvContract.addBlockHeader(firstBlockData.rawHeader);
+      let tx = await spvGateway.addBlockHeader(firstBlockData.rawHeader);
 
       let expectedMainchainHead = firstBlockData.blockHash;
       let expectedMainchainBlockHeight = 1;
 
       await expect(tx)
-        .to.emit(spvContract, "BlockHeaderAdded")
+        .to.emit(spvGateway, "BlockHeaderAdded")
         .withArgs(expectedMainchainBlockHeight, expectedMainchainHead);
       await expect(tx)
-        .to.emit(spvContract, "MainchainHeadUpdated")
+        .to.emit(spvGateway, "MainchainHeadUpdated")
         .withArgs(expectedMainchainBlockHeight, expectedMainchainHead);
 
-      expect(await spvContract.getMainchainHead()).to.be.eq(expectedMainchainHead);
-      expect(await spvContract.getMainchainHeight()).to.be.eq(expectedMainchainBlockHeight);
-      expect(await spvContract.getBlockHeight(expectedMainchainHead)).to.be.eq(expectedMainchainBlockHeight);
-      expect(await spvContract.getBlockMerkleRoot(expectedMainchainHead)).to.be.eq(
+      expect(await spvGateway.getMainchainHead()).to.be.eq(expectedMainchainHead);
+      expect(await spvGateway.getMainchainHeight()).to.be.eq(expectedMainchainBlockHeight);
+      expect(await spvGateway.getBlockHeight(expectedMainchainHead)).to.be.eq(expectedMainchainBlockHeight);
+      expect(await spvGateway.getBlockMerkleRoot(expectedMainchainHead)).to.be.eq(
         firstBlockData.parsedBlockHeader.merkleroot,
       );
-      expect(await spvContract.getBlockStatus(firstBlockData.blockHash)).to.be.deep.eq([true, 0n]);
+      expect(await spvGateway.getBlockStatus(firstBlockData.blockHash)).to.be.deep.eq([true, 0n]);
 
-      let blockInfo = await spvContract.getBlockInfo(expectedMainchainHead);
+      let blockInfo = await spvGateway.getBlockInfo(expectedMainchainHead);
 
       checkBlockHeaderData(blockInfo.mainBlockData, firstBlockData);
       expect(blockInfo.mainBlockData.blockHeight).to.be.eq(expectedMainchainBlockHeight);
       expect(blockInfo.isInMainchain).to.be.true;
       expect(blockInfo.cumulativeWork).to.be.eq(firstBlockData.parsedBlockHeader.chainwork);
 
-      tx = await spvContract.addBlockHeader(secondBlockData.rawHeader);
+      tx = await spvGateway.addBlockHeader(secondBlockData.rawHeader);
 
       expectedMainchainHead = secondBlockData.blockHash;
       expectedMainchainBlockHeight = 2;
 
       await expect(tx)
-        .to.emit(spvContract, "BlockHeaderAdded")
+        .to.emit(spvGateway, "BlockHeaderAdded")
         .withArgs(expectedMainchainBlockHeight, expectedMainchainHead);
       await expect(tx)
-        .to.emit(spvContract, "MainchainHeadUpdated")
+        .to.emit(spvGateway, "MainchainHeadUpdated")
         .withArgs(expectedMainchainBlockHeight, expectedMainchainHead);
 
-      blockInfo = await spvContract.getBlockInfo(expectedMainchainHead);
+      blockInfo = await spvGateway.getBlockInfo(expectedMainchainHead);
 
       checkBlockHeaderData(blockInfo.mainBlockData, secondBlockData);
       expect(blockInfo.mainBlockData.blockHeight).to.be.eq(expectedMainchainBlockHeight);
       expect(blockInfo.isInMainchain).to.be.true;
       expect(blockInfo.cumulativeWork).to.be.eq(secondBlockData.parsedBlockHeader.chainwork);
 
-      expect(await spvContract.getBlockStatus(firstBlockData.blockHash)).to.be.deep.eq([true, 1n]);
-      expect(await spvContract.getBlockStatus(secondBlockData.blockHash)).to.be.deep.eq([true, 0n]);
+      expect(await spvGateway.getBlockStatus(firstBlockData.blockHash)).to.be.deep.eq([true, 1n]);
+      expect(await spvGateway.getBlockStatus(secondBlockData.blockHash)).to.be.deep.eq([true, 0n]);
     });
 
     it("should correctly add target adjustment block", async () => {
@@ -758,7 +755,7 @@ describe("SPVContract", () => {
         .parsedBlockHeader.chainwork;
       const initBlockData = getBlockHeaderData(newestBlocksDataFilePath, initBlockHeight);
 
-      await spvContract["__SPVContract_init(bytes,uint64,uint256)"](
+      await spvGateway["__SPVGateway_init(bytes,uint64,uint256)"](
         initBlockData.rawHeader,
         initBlockData.height,
         lastEpochCumulativeWork,
@@ -773,7 +770,7 @@ describe("SPVContract", () => {
         const currentBlocksData = blocksData.slice(batchSize * i, batchSize * (i + 1));
         const rawHeaders = currentBlocksData.map((headerData) => headerData.rawHeader);
 
-        await spvContract.addBlockHeaderBatch(rawHeaders);
+        await spvGateway.addBlockHeaderBatch(rawHeaders);
       }
 
       const blocksToAdd = 20;
@@ -782,16 +779,14 @@ describe("SPVContract", () => {
 
       for (let i = 0; i < blocksToAdd; i++) {
         if ((newBlockHeight + i) % DIFFICULTY_ADJUSTMENT_INTERVAL != 0) {
-          await spvContract.addBlockHeader(blocksData[i].rawHeader);
+          await spvGateway.addBlockHeader(blocksData[i].rawHeader);
         } else {
-          await spvContract.addBlockHeader(blocksData[i].rawHeader);
+          await spvGateway.addBlockHeader(blocksData[i].rawHeader);
 
-          expect((await spvContract.getBlockInfo(blocksData[i].blockHash)).cumulativeWork).to.be.eq(
+          expect((await spvGateway.getBlockInfo(blocksData[i].blockHash)).cumulativeWork).to.be.eq(
             blocksData[i].parsedBlockHeader.chainwork,
           );
-          expect(await spvContract.getLastEpochCumulativeWork()).to.be.eq(
-            blocksData[i - 1].parsedBlockHeader.chainwork,
-          );
+          expect(await spvGateway.getLastEpochCumulativeWork()).to.be.eq(blocksData[i - 1].parsedBlockHeader.chainwork);
         }
       }
     });
@@ -799,93 +794,93 @@ describe("SPVContract", () => {
     it("should correctly update mainchain with the longest chain", async () => {
       const genesisData = getBlockHeaderData(regtestGenesisBlockDataFilePath, 0);
 
-      await spvContract.__SPVContractMock_init(genesisData.rawHeader);
+      await spvGateway.__SPVGatewayMock_init(genesisData.rawHeader);
 
       const mainchainBlocks = getReorgBlockHeaderDataBatch(reorgBlocksDataFilePath, 1, 15);
       const rawHeaders = mainchainBlocks.map((blockData) => blockData.rawHeader);
 
-      await spvContract.addBlockHeaderBatch(rawHeaders);
+      await spvGateway.addBlockHeaderBatch(rawHeaders);
 
       const altBlock = getReorgBlockHeaderData(reorgBlocksDataFilePath, 16, false);
 
-      let tx = await spvContract.addBlockHeader(altBlock.rawHeader);
+      let tx = await spvGateway.addBlockHeader(altBlock.rawHeader);
 
       let expectedCurrentBlockHeight = 16;
 
       await expect(tx)
-        .to.emit(spvContract, "MainchainHeadUpdated")
+        .to.emit(spvGateway, "MainchainHeadUpdated")
         .withArgs(expectedCurrentBlockHeight, altBlock.blockHash);
-      expect(await spvContract.getMainchainHead()).to.be.eq(altBlock.blockHash);
+      expect(await spvGateway.getMainchainHead()).to.be.eq(altBlock.blockHash);
 
       const newMainchainBlocks = getReorgBlockHeaderDataBatch(reorgBlocksDataFilePath, 16, 2);
       const newRawHeaders = newMainchainBlocks.map((blockData) => blockData.rawHeader);
 
-      tx = await spvContract.addBlockHeaderBatch(newRawHeaders);
+      tx = await spvGateway.addBlockHeaderBatch(newRawHeaders);
 
       expectedCurrentBlockHeight = 17;
       const expectedMainchainHead = newMainchainBlocks[1];
 
       await expect(tx)
-        .to.emit(spvContract, "MainchainHeadUpdated")
+        .to.emit(spvGateway, "MainchainHeadUpdated")
         .withArgs(expectedCurrentBlockHeight, expectedMainchainHead.blockHash);
-      expect(await spvContract.getMainchainHead()).to.be.eq(expectedMainchainHead.blockHash);
-      expect(await spvContract.isInMainchain(altBlock.blockHash)).to.be.false;
+      expect(await spvGateway.getMainchainHead()).to.be.eq(expectedMainchainHead.blockHash);
+      expect(await spvGateway.isInMainchain(altBlock.blockHash)).to.be.false;
     });
 
     it("should correctly add alternative block without mainchain update", async () => {
       const genesisData = getBlockHeaderData(regtestGenesisBlockDataFilePath, 0);
 
-      await spvContract.__SPVContractMock_init(genesisData.rawHeader);
+      await spvGateway.__SPVGatewayMock_init(genesisData.rawHeader);
 
       const mainchainBlocks = getReorgBlockHeaderDataBatch(reorgBlocksDataFilePath, 1, 21);
       const rawHeaders = mainchainBlocks.map((blockData) => blockData.rawHeader);
 
-      await spvContract.addBlockHeaderBatch(rawHeaders);
+      await spvGateway.addBlockHeaderBatch(rawHeaders);
 
       const altBlock = getReorgBlockHeaderData(reorgBlocksDataFilePath, 16, false);
 
-      const tx = await spvContract.addBlockHeader(altBlock.rawHeader);
+      const tx = await spvGateway.addBlockHeader(altBlock.rawHeader);
 
-      await expect(tx).to.not.emit(spvContract, "MainchainHeadUpdated");
+      await expect(tx).to.not.emit(spvGateway, "MainchainHeadUpdated");
 
-      expect(await spvContract.isInMainchain(altBlock.blockHash)).to.be.false;
+      expect(await spvGateway.isInMainchain(altBlock.blockHash)).to.be.false;
     });
 
     it("should get exception if pass block that already exists", async () => {
-      await spvContract["__SPVContract_init()"]();
+      await spvGateway["__SPVGateway_init()"]();
 
       const currentBlockData = getBlockHeaderData(firstBlocksDataFilePath, 1);
 
-      await spvContract.addBlockHeader(currentBlockData.rawHeader);
+      await spvGateway.addBlockHeader(currentBlockData.rawHeader);
 
-      await expect(spvContract.addBlockHeader(currentBlockData.rawHeader))
-        .to.be.revertedWithCustomError(spvContract, "BlockAlreadyExists")
+      await expect(spvGateway.addBlockHeader(currentBlockData.rawHeader))
+        .to.be.revertedWithCustomError(spvGateway, "BlockAlreadyExists")
         .withArgs(currentBlockData.blockHash);
     });
 
     it("should get exception if prev block hash is not in the chain", async () => {
-      await spvContract["__SPVContract_init()"]();
+      await spvGateway["__SPVGateway_init()"]();
 
       const firstBlockData = getBlockHeaderData(firstBlocksDataFilePath, 1);
       const thirdBlockData = getBlockHeaderData(firstBlocksDataFilePath, 3);
 
-      await spvContract.addBlockHeader(firstBlockData.rawHeader);
+      await spvGateway.addBlockHeader(firstBlockData.rawHeader);
 
-      await expect(spvContract.addBlockHeader(thirdBlockData.rawHeader))
-        .to.be.revertedWithCustomError(spvContract, "PrevBlockDoesNotExist")
+      await expect(spvGateway.addBlockHeader(thirdBlockData.rawHeader))
+        .to.be.revertedWithCustomError(spvGateway, "PrevBlockDoesNotExist")
         .withArgs(thirdBlockData.parsedBlockHeader.previousblockhash);
     });
   });
 
   describe("#getStorageMedianTime", () => {
     beforeEach("setup", async () => {
-      await spvContract["__SPVContract_init()"]();
+      await spvGateway["__SPVGateway_init()"]();
     });
 
     it("should return correct median time for the first block", async () => {
       const currentBlockData = getBlockHeaderData(firstBlocksDataFilePath, 1);
 
-      expect(await spvContract.getStorageMedianTime(currentBlockData.rawHeader, 1)).to.be.eq(
+      expect(await spvGateway.getStorageMedianTime(currentBlockData.rawHeader, 1)).to.be.eq(
         currentBlockData.parsedBlockHeader.time,
       );
     });
@@ -896,14 +891,14 @@ describe("SPVContract", () => {
       for (let i = 1; i <= 11; ++i) {
         const currentBlockData = getBlockHeaderData(firstBlocksDataFilePath, i);
 
-        await spvContract.addBlockHeader(currentBlockData.rawHeader);
+        await spvGateway.addBlockHeader(currentBlockData.rawHeader);
 
-        expect(await spvContract.getBlockHeight(currentBlockData.blockHash)).to.be.eq(i);
+        expect(await spvGateway.getBlockHeight(currentBlockData.blockHash)).to.be.eq(i);
 
         blocksData.push(currentBlockData);
 
         if (i > 1) {
-          expect(await spvContract.getStorageMedianTime(currentBlockData.rawHeader, 1)).to.be.eq(
+          expect(await spvGateway.getStorageMedianTime(currentBlockData.rawHeader, 1)).to.be.eq(
             blocksData[i - 1].parsedBlockHeader.time,
           );
         }
@@ -917,10 +912,10 @@ describe("SPVContract", () => {
         blockHeadersData.push(getBlockHeaderData(firstBlocksDataFilePath, i));
       }
 
-      await spvContract.addBlockHeaderBatch(blockHeadersData.map((headerData) => headerData.rawHeader));
+      await spvGateway.addBlockHeaderBatch(blockHeadersData.map((headerData) => headerData.rawHeader));
 
       for (let i = 12; i < 100; ++i) {
-        expect(await spvContract.getStorageMedianTime(blockHeadersData[i - 1].rawHeader, i)).to.be.eq(
+        expect(await spvGateway.getStorageMedianTime(blockHeadersData[i - 1].rawHeader, i)).to.be.eq(
           blockHeadersData[i - 2].parsedBlockHeader.mediantime,
         );
       }
@@ -929,17 +924,17 @@ describe("SPVContract", () => {
 
   describe("#getMemoryMedianTime", async () => {
     beforeEach("setup", async () => {
-      await spvContract["__SPVContract_init()"]();
+      await spvGateway["__SPVGateway_init()"]();
     });
 
     it("should return correct median time", async () => {
       const blockHeadersData = getBlockHeaderDataBatch(firstBlocksDataFilePath, 1, 100);
 
       const rawHeaders = blockHeadersData.map((headerData) => headerData.rawHeader);
-      await spvContract.addBlockHeaderBatch(rawHeaders);
+      await spvGateway.addBlockHeaderBatch(rawHeaders);
 
       for (let i = 12; i < 100; ++i) {
-        expect(await spvContract.getMemoryMedianTime(rawHeaders, i)).to.be.eq(
+        expect(await spvGateway.getMemoryMedianTime(rawHeaders, i)).to.be.eq(
           blockHeadersData[i - 1].parsedBlockHeader.mediantime,
         );
       }
@@ -950,7 +945,7 @@ describe("SPVContract", () => {
       const rawHeaders = blockHeadersData.map((headerData) => headerData.rawHeader);
 
       for (let i = 1; i <= 10; ++i) {
-        expect(await spvContract.getMemoryMedianTime(rawHeaders, i)).to.be.eq(0);
+        expect(await spvGateway.getMemoryMedianTime(rawHeaders, i)).to.be.eq(0);
       }
     });
   });
@@ -963,7 +958,7 @@ describe("SPVContract", () => {
         .parsedBlockHeader.chainwork;
       const initBlockData = getBlockHeaderData(newestBlocksDataFilePath, initBlockHeight);
 
-      await spvContract["__SPVContract_init(bytes,uint64,uint256)"](
+      await spvGateway["__SPVGateway_init(bytes,uint64,uint256)"](
         initBlockData.rawHeader,
         initBlockData.height,
         lastEpochCumulativeWork,
@@ -979,7 +974,7 @@ describe("SPVContract", () => {
       const target = bitsToTarget(newBlockData.parsedBlockHeader.bits);
 
       await expect(
-        spvContract.validateBlockRules(
+        spvGateway.validateBlockRules(
           {
             prevBlockHash: newBlockData.parsedBlockHeader.previousblockhash,
             merkleRoot: newBlockData.parsedBlockHeader.merkleroot,
@@ -993,7 +988,7 @@ describe("SPVContract", () => {
           newBlockData.parsedBlockHeader.mediantime,
         ),
       )
-        .to.be.revertedWithCustomError(spvContract, "InvalidTarget")
+        .to.be.revertedWithCustomError(spvGateway, "InvalidTarget")
         .withArgs(mockTarget, target);
     });
 
@@ -1004,7 +999,7 @@ describe("SPVContract", () => {
       const mockTarget = bitsToTarget(mockBits);
 
       await expect(
-        spvContract.validateBlockRules(
+        spvGateway.validateBlockRules(
           {
             prevBlockHash: newBlockData.parsedBlockHeader.previousblockhash,
             merkleRoot: newBlockData.parsedBlockHeader.merkleroot,
@@ -1018,7 +1013,7 @@ describe("SPVContract", () => {
           newBlockData.parsedBlockHeader.mediantime,
         ),
       )
-        .to.be.revertedWithCustomError(spvContract, "InvalidBlockHash")
+        .to.be.revertedWithCustomError(spvGateway, "InvalidBlockHash")
         .withArgs(newBlockData.blockHash, mockTarget);
     });
 
@@ -1029,7 +1024,7 @@ describe("SPVContract", () => {
       const mockTime = BigInt(newBlockData.parsedBlockHeader.mediantime) - 100n;
 
       await expect(
-        spvContract.validateBlockRules(
+        spvGateway.validateBlockRules(
           {
             prevBlockHash: newBlockData.parsedBlockHeader.previousblockhash,
             merkleRoot: newBlockData.parsedBlockHeader.merkleroot,
@@ -1043,7 +1038,7 @@ describe("SPVContract", () => {
           newBlockData.parsedBlockHeader.mediantime,
         ),
       )
-        .to.be.revertedWithCustomError(spvContract, "InvalidBlockTime")
+        .to.be.revertedWithCustomError(spvGateway, "InvalidBlockTime")
         .withArgs(mockTime, newBlockData.parsedBlockHeader.mediantime);
     });
   });

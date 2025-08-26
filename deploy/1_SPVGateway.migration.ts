@@ -1,19 +1,19 @@
 import { Deployer, Reporter } from "@solarity/hardhat-migrate";
 
-import { SPVContract__factory } from "@ethers-v6";
+import { SPVGateway__factory } from "@ethers-v6";
 
 import { getConfig } from "./config/config";
 
 export = async (deployer: Deployer) => {
   const config = (await getConfig())!;
 
-  const spvContract = await deployer.deploy(SPVContract__factory);
+  const spvGateway = await deployer.deploy(SPVGateway__factory);
 
-  await spvContract["__SPVContract_init(bytes,uint256,uint256)"](
+  await spvGateway["__SPVGateway_init(bytes,uint256,uint256)"](
     config.blockHeader,
     config.blockHeight,
     config.cumulativeWork,
   );
 
-  Reporter.reportContracts(["SPVContract", await spvContract.getAddress()]);
+  Reporter.reportContracts(["SPVGateway", await spvGateway.getAddress()]);
 };

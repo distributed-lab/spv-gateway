@@ -1,5 +1,5 @@
 {
-  "name": "spv-contracts",
+  "name": "spv-gateway",
   "version": "0.1.0",
   "license": "MIT",
   "author": "Distributed Lab",
@@ -8,7 +8,7 @@
     "solidity",
     "smart-contracts",
     "bitcoin",
-    "spv-contracts"
+    "spv-gateway"
   ],
   "files": [
     "**/*.sol",

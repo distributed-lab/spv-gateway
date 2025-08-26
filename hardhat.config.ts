@@ -88,7 +88,7 @@ const config: HardhatUserConfig = {
     discriminateTypes: true,
   },
   markup: {
-    onlyFiles: ["contracts/libs", "contracts/SPVContract.sol", "contracts/interfaces/ISPVContract.sol"],
+    onlyFiles: ["contracts/libs", "contracts/SPVGateway.sol", "contracts/interfaces/ISPVGateway.sol"],
     outdir: "docs",
   },
 };
