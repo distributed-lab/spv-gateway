@@ -47,7 +47,7 @@
     "@nomicfoundation/hardhat-verify": "^2.0.13",
     "@solarity/hardhat-gobind": "^1.2.2",
     "@solarity/hardhat-markup": "^1.0.10",
-    "@solarity/hardhat-migrate": "^3.0.0",
+    "@solarity/hardhat-migrate": "^3.1.0",
     "@typechain/ethers-v6": "^0.5.1",
     "@typechain/hardhat": "^9.1.0",
     "@types/chai": "^4.3.20",

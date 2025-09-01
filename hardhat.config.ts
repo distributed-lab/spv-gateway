@@ -50,15 +50,7 @@ const config: HardhatUserConfig = {
     },
   },
   etherscan: {
-    apiKey: {
-      sepolia: `${process.env.ETHERSCAN_KEY}`,
-      mainnet: `${process.env.ETHERSCAN_KEY}`,
-      bscTestnet: `${process.env.BSCSCAN_KEY}`,
-      bsc: `${process.env.BSCSCAN_KEY}`,
-      polygon: `${process.env.POLYGONSCAN_KEY}`,
-      avalancheFujiTestnet: `${process.env.AVALANCHE_KEY}`,
-      avalanche: `${process.env.AVALANCHE_KEY}`,
-    },
+    apiKey: `${process.env.ETHERSCAN_KEY}`,
   },
   migrate: {
     paths: {
