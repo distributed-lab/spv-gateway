@@ -40,7 +40,7 @@ contract SPVGateway is ISPVGateway, Initializable {
         }
     }
 
-    function __SPVGateway_init() external initializer {
+    function __SPVGateway_init_genesis() external initializer {
         BlockHeader.HeaderData memory genesisBlockHeader_ = BlockHeader.HeaderData({
             version: 1,
             prevBlockHash: bytes32(0),

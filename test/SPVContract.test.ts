@@ -45,7 +45,7 @@ describe("SPVGateway", () => {
     it("should correctly init SPV contract from genesis state", async () => {
       const genesisData = getBlockHeaderData(genesisBlockDataFilePath, 0);
 
-      const tx = await spvGateway["__SPVGateway_init()"]();
+      const tx = await spvGateway.__SPVGateway_init_genesis();
 
       await expect(tx).to.emit(spvGateway, "MainchainHeadUpdated").withArgs(genesisData.height, genesisData.blockHash);
       await expect(tx).to.emit(spvGateway, "BlockHeaderAdded").withArgs(genesisData.height, genesisData.blockHash);
@@ -54,7 +54,7 @@ describe("SPVGateway", () => {
     it("should correctly init SPV contract from genesis state passed outside", async () => {
       const initBlockData = getBlockHeaderData(genesisBlockDataFilePath, 0);
 
-      const tx = await spvGateway["__SPVGateway_init(bytes,uint64,uint256)"](initBlockData.rawHeader, 0, 0);
+      const tx = await spvGateway.__SPVGateway_init(initBlockData.rawHeader, 0, 0);
 
       await expect(tx)
         .to.emit(spvGateway, "MainchainHeadUpdated")
@@ -69,7 +69,7 @@ describe("SPVGateway", () => {
         .parsedBlockHeader.chainwork;
       const initBlockData = getBlockHeaderData(newestBlocksDataFilePath, initBlockHeight);
 
-      const tx = await spvGateway["__SPVGateway_init(bytes,uint64,uint256)"](
+      const tx = await spvGateway.__SPVGateway_init(
         initBlockData.rawHeader,
         initBlockData.height,
         lastEpochCumulativeWork,
@@ -92,21 +92,15 @@ describe("SPVGateway", () => {
         .parsedBlockHeader.chainwork;
       const initBlockData = getBlockHeaderData(newestBlocksDataFilePath, initBlockHeight);
 
-      await expect(
-        spvGateway["__SPVGateway_init(bytes,uint64,uint256)"](
-          initBlockData.rawHeader,
-          initBlockData.height,
-          lastEpochCumulativeWork,
-        ),
-      )
+      await expect(spvGateway.__SPVGateway_init(initBlockData.rawHeader, initBlockData.height, lastEpochCumulativeWork))
         .to.be.revertedWithCustomError(spvGateway, "InvalidInitialBlockHeight")
         .withArgs(initBlockHeight);
     });
 
     it("should get exception if try to call init function twice", async () => {
-      await spvGateway["__SPVGateway_init()"]();
+      await spvGateway.__SPVGateway_init_genesis();
 
-      await expect(spvGateway["__SPVGateway_init()"]()).to.be.revertedWithCustomError(
+      await expect(spvGateway.__SPVGateway_init_genesis()).to.be.revertedWithCustomError(
         spvGateway,
         "InvalidInitialization",
       );
@@ -117,11 +111,7 @@ describe("SPVGateway", () => {
       const initBlockData = getBlockHeaderData(newestBlocksDataFilePath, initBlockHeight);
 
       await expect(
-        spvGateway["__SPVGateway_init(bytes,uint64,uint256)"](
-          initBlockData.rawHeader,
-          initBlockData.height,
-          lastEpochCumulativeWork,
-        ),
+        spvGateway.__SPVGateway_init(initBlockData.rawHeader, initBlockData.height, lastEpochCumulativeWork),
       ).to.be.revertedWithCustomError(spvGateway, "InvalidInitialization");
     });
   });
@@ -134,11 +124,7 @@ describe("SPVGateway", () => {
         .parsedBlockHeader.chainwork;
       const initBlockData = getBlockHeaderData(newestBlocksDataFilePath, initBlockHeight);
 
-      await spvGateway["__SPVGateway_init(bytes,uint64,uint256)"](
-        initBlockData.rawHeader,
-        initBlockData.height,
-        lastEpochCumulativeWork,
-      );
+      await spvGateway.__SPVGateway_init(initBlockData.rawHeader, initBlockData.height, lastEpochCumulativeWork);
 
       const batchSize = 100;
       const batchesCount = 22;
@@ -178,7 +164,7 @@ describe("SPVGateway", () => {
     });
 
     it("should get exception if the first block does not exist", async () => {
-      await spvGateway["__SPVGateway_init()"]();
+      await spvGateway.__SPVGateway_init_genesis();
 
       const blockHeadersData = [];
 
@@ -194,7 +180,7 @@ describe("SPVGateway", () => {
     });
 
     it("should get exception if pass block headers in the invalid order", async () => {
-      await spvGateway["__SPVGateway_init()"]();
+      await spvGateway.__SPVGateway_init_genesis();
 
       await expect(
         spvGateway.addBlockHeaderBatch([
@@ -205,7 +191,7 @@ describe("SPVGateway", () => {
     });
 
     it("should get exception if pass zero array", async () => {
-      await spvGateway["__SPVGateway_init()"]();
+      await spvGateway.__SPVGateway_init_genesis();
 
       await expect(spvGateway.addBlockHeaderBatch([])).to.revertedWithCustomError(spvGateway, "EmptyBlockHeaderArray");
     });
@@ -214,7 +200,7 @@ describe("SPVGateway", () => {
   describe("#checkTxInclusion", () => {
     describe("#when there are from 1 to 6 transactions in a block", () => {
       beforeEach(async () => {
-        await spvGateway["__SPVGateway_init()"]();
+        await spvGateway.__SPVGateway_init_genesis();
 
         const initBlockHeight = 1;
         const batchSize = 200;
@@ -534,11 +520,7 @@ describe("SPVGateway", () => {
         .parsedBlockHeader.chainwork;
       const initBlockData = getBlockHeaderData(newestBlocksDataFilePath, initBlockHeight);
 
-      await spvGateway["__SPVGateway_init(bytes,uint64,uint256)"](
-        initBlockData.rawHeader,
-        initBlockData.height,
-        lastEpochCumulativeWork,
-      );
+      await spvGateway.__SPVGateway_init(initBlockData.rawHeader, initBlockData.height, lastEpochCumulativeWork);
 
       const neededBlockData = getBlockHeaderData(newestBlocksDataFilePath, 802368);
 
@@ -690,7 +672,7 @@ describe("SPVGateway", () => {
 
   describe("#addBlockHeader", () => {
     it("should correctly add new block header", async () => {
-      await spvGateway["__SPVGateway_init()"]();
+      await spvGateway.__SPVGateway_init_genesis();
 
       const firstBlockData = getBlockHeaderData(firstBlocksDataFilePath, 1);
       const secondBlockData = getBlockHeaderData(firstBlocksDataFilePath, 2);
@@ -755,11 +737,7 @@ describe("SPVGateway", () => {
         .parsedBlockHeader.chainwork;
       const initBlockData = getBlockHeaderData(newestBlocksDataFilePath, initBlockHeight);
 
-      await spvGateway["__SPVGateway_init(bytes,uint64,uint256)"](
-        initBlockData.rawHeader,
-        initBlockData.height,
-        lastEpochCumulativeWork,
-      );
+      await spvGateway.__SPVGateway_init(initBlockData.rawHeader, initBlockData.height, lastEpochCumulativeWork);
 
       const batchSize = 200;
       const batchesCount = 10;
@@ -847,7 +825,7 @@ describe("SPVGateway", () => {
     });
 
     it("should get exception if pass block that already exists", async () => {
-      await spvGateway["__SPVGateway_init()"]();
+      await spvGateway.__SPVGateway_init_genesis();
 
       const currentBlockData = getBlockHeaderData(firstBlocksDataFilePath, 1);
 
@@ -859,7 +837,7 @@ describe("SPVGateway", () => {
     });
 
     it("should get exception if prev block hash is not in the chain", async () => {
-      await spvGateway["__SPVGateway_init()"]();
+      await spvGateway.__SPVGateway_init_genesis();
 
       const firstBlockData = getBlockHeaderData(firstBlocksDataFilePath, 1);
       const thirdBlockData = getBlockHeaderData(firstBlocksDataFilePath, 3);
@@ -874,7 +852,7 @@ describe("SPVGateway", () => {
 
   describe("#getStorageMedianTime", () => {
     beforeEach("setup", async () => {
-      await spvGateway["__SPVGateway_init()"]();
+      await spvGateway.__SPVGateway_init_genesis();
     });
 
     it("should return correct median time for the first block", async () => {
@@ -924,7 +902,7 @@ describe("SPVGateway", () => {
 
   describe("#getMemoryMedianTime", async () => {
     beforeEach("setup", async () => {
-      await spvGateway["__SPVGateway_init()"]();
+      await spvGateway.__SPVGateway_init_genesis();
     });
 
     it("should return correct median time", async () => {
@@ -958,11 +936,7 @@ describe("SPVGateway", () => {
         .parsedBlockHeader.chainwork;
       const initBlockData = getBlockHeaderData(newestBlocksDataFilePath, initBlockHeight);
 
-      await spvGateway["__SPVGateway_init(bytes,uint64,uint256)"](
-        initBlockData.rawHeader,
-        initBlockData.height,
-        lastEpochCumulativeWork,
-      );
+      await spvGateway.__SPVGateway_init(initBlockData.rawHeader, initBlockData.height, lastEpochCumulativeWork);
     });
 
     it("should get exception if pass invalid bits field", async () => {

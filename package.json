@@ -1,9 +1,9 @@
 {
-  "name": "spv-gateway",
+  "name": "@distributedlab/spv-gateway",
   "version": "0.1.0",
   "license": "MIT",
   "author": "Distributed Lab",
-  "description": "",
+  "description": "ERC-8002: SPV gateway reference implementation",
   "keywords": [
     "solidity",
     "smart-contracts",
