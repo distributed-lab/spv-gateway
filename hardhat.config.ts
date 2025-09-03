@@ -42,23 +42,18 @@ const config: HardhatUserConfig = {
   solidity: {
     version: "0.8.28",
     settings: {
+      metadata: {
+        bytecodeHash: "none",
+      },
       optimizer: {
         enabled: true,
         runs: 1000000,
       },
-      evmVersion: "paris",
+      evmVersion: "london",
     },
   },
   etherscan: {
-    apiKey: {
-      sepolia: `${process.env.ETHERSCAN_KEY}`,
-      mainnet: `${process.env.ETHERSCAN_KEY}`,
-      bscTestnet: `${process.env.BSCSCAN_KEY}`,
-      bsc: `${process.env.BSCSCAN_KEY}`,
-      polygon: `${process.env.POLYGONSCAN_KEY}`,
-      avalancheFujiTestnet: `${process.env.AVALANCHE_KEY}`,
-      avalanche: `${process.env.AVALANCHE_KEY}`,
-    },
+    apiKey: `${process.env.ETHERSCAN_KEY}`,
   },
   migrate: {
     paths: {
@@ -88,7 +83,7 @@ const config: HardhatUserConfig = {
     discriminateTypes: true,
   },
   markup: {
-    onlyFiles: ["contracts/libs", "contracts/SPVContract.sol", "contracts/interfaces/ISPVContract.sol"],
+    onlyFiles: ["contracts/libs", "contracts/SPVGateway.sol", "contracts/interfaces/ISPVGateway.sol"],
     outdir: "docs",
   },
 };

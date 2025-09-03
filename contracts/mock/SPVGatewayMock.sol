@@ -3,12 +3,12 @@ pragma solidity ^0.8.28;
 
 import {BlockHeader} from "@solarity/solidity-lib/libs/bitcoin/BlockHeader.sol";
 
-import {SPVContract} from "../SPVContract.sol";
+import {SPVGateway} from "../SPVGateway.sol";
 
-contract SPVContractMock is SPVContract {
+contract SPVGatewayMock is SPVGateway {
     using BlockHeader for bytes;
 
-    function __SPVContractMock_init(bytes calldata blockHeaderRaw_) external initializer {
+    function __SPVGatewayMock_init(bytes calldata blockHeaderRaw_) external initializer {
         (
             BlockHeader.HeaderData memory genesisBlockHeader_,
             bytes32 genesisBlockHash_

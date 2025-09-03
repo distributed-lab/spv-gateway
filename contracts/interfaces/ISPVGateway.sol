@@ -8,7 +8,7 @@ import {BlockHeader} from "@solarity/solidity-lib/libs/bitcoin/BlockHeader.sol";
  * This contract allows for the verification of Bitcoin block headers
  * and tracking of the main Bitcoin blockchain
  */
-interface ISPVContract {
+interface ISPVGateway {
     /**
      * @notice Emitted when an initial block height is invalid.
      * This error indicates that the provided block height is not valid for initialization

@@ -1,14 +1,14 @@
 {
-  "name": "spv-contracts",
+  "name": "@distributedlab/spv-gateway",
   "version": "0.1.0",
   "license": "MIT",
   "author": "Distributed Lab",
-  "description": "",
+  "description": "ERC-8002: SPV gateway reference implementation",
   "keywords": [
     "solidity",
     "smart-contracts",
     "bitcoin",
-    "spv-contracts"
+    "spv-gateway"
   ],
   "files": [
     "**/*.sol",
@@ -47,7 +47,7 @@
     "@nomicfoundation/hardhat-verify": "^2.0.13",
     "@solarity/hardhat-gobind": "^1.2.2",
     "@solarity/hardhat-markup": "^1.0.10",
-    "@solarity/hardhat-migrate": "^3.0.0",
+    "@solarity/hardhat-migrate": "^3.1.0",
     "@typechain/ethers-v6": "^0.5.1",
     "@typechain/hardhat": "^9.1.0",
     "@types/chai": "^4.3.20",
